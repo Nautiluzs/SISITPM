@@ -182,6 +182,64 @@
 
     </div>
 
+    {{-- HISTORIAL DE DESCARGAS --}}
+    <section style="background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 24px; margin-top: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+            <div>
+                <h3 style="font-size: 18px; font-weight: 800; color: #0f172a; margin: 0;">Historial de descargas</h3>
+                <p style="font-size: 13px; color: #64748b; margin: 5px 0 0;">Consulta los PDF y Excel generados desde este centro de reportes.</p>
+            </div>
+            <form method="GET" action="{{ route('reportes.index') }}" style="display: flex; align-items: end; gap: 8px; flex-wrap: wrap;">
+                <label style="font-size: 12px; font-weight: 700; color: #334155;">
+                    Mes
+                    <select name="mes_historial" style="display: block; margin-top: 4px; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; color: #1e293b;">
+                        <option value="">Todos</option>
+                        @foreach([1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril', 5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto', 9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'] as $numeroMes => $nombreMes)
+                            <option value="{{ $numeroMes }}" @selected((string) request('mes_historial') === (string) $numeroMes)>{{ $nombreMes }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label style="font-size: 12px; font-weight: 700; color: #334155;">
+                    Año
+                    <input type="number" name="anio_historial" min="2000" max="2100" value="{{ request('anio_historial') }}" placeholder="{{ now()->year }}" style="display: block; width: 100px; margin-top: 4px; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; color: #1e293b;">
+                </label>
+                <button type="submit" style="padding: 9px 14px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">Filtrar</button>
+                <a href="{{ route('reportes.index') }}" style="padding: 9px 14px; background: #e2e8f0; color: #334155; border-radius: 8px; font-weight: 700; text-decoration: none;">Limpiar</a>
+            </form>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: #f8fafc; color: #334155; text-align: left;">
+                        <th style="padding: 11px;">Fecha</th>
+                        <th style="padding: 11px;">Usuario</th>
+                        <th style="padding: 11px;">Reporte</th>
+                        <th style="padding: 11px;">Formato</th>
+                        <th style="padding: 11px;">Archivo</th>
+                        <th style="padding: 11px;">Filtros</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($historialReportes as $descarga)
+                        <tr style="border-top: 1px solid #e2e8f0; color: #334155;">
+                            <td style="padding: 11px; white-space: nowrap;">{{ $descarga->created_at->format('d/m/Y H:i') }}</td>
+                            <td style="padding: 11px;">{{ $descarga->usuario?->nombre_completo ?? 'Usuario eliminado' }}</td>
+                            <td style="padding: 11px;">{{ $descarga->tipo_reporte }}</td>
+                            <td style="padding: 11px;"><strong style="color: {{ $descarga->formato === 'PDF' ? '#dc2626' : '#16a34a' }};">{{ $descarga->formato }}</strong></td>
+                            <td style="padding: 11px;">{{ $descarga->nombre_archivo }}</td>
+                            <td style="padding: 11px;">{{ collect($descarga->filtros ?? [])->filter(fn ($valor) => $valor !== null && $valor !== '')->map(fn ($valor, $clave) => $clave . ': ' . $valor)->implode(', ') ?: 'Sin filtros' }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" style="padding: 20px; text-align: center; color: #64748b;">No hay descargas para los filtros seleccionados.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </section>
+
     <script>
         function filtrarAmbientesPorCarrera(idCarrera) {
             const selectAmbiente = document.getElementById('filtro-ambiente-reporte');

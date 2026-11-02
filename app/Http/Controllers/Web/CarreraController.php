@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Ambiente;
 use App\Models\Carrera;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -15,7 +16,7 @@ class CarreraController extends Controller
     // ============================================================
     public function index()
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         $idsCarreras = $user->idsCarrerasVisibles();
@@ -25,9 +26,28 @@ class CarreraController extends Controller
             fn ($q) => $q,
             fn ($q) => $q->whereIn('id_carrera', $idsCarreras)
         )
+            ->with([
+                'ambientes' => fn ($q) => $q->orderBy('nombre'),
+                'jefeCarrera',
+            ])
             ->withCount('ambientes')
-            ->orderBy('nombre')
             ->get();
+
+        $ordenJerarquico = [
+            'MEI' => 1,
+            'MAZ' => 2,
+            'INA' => 3,
+            'SIF' => 4,
+            'GTR' => 5,
+            'ELC' => 6,
+            'AGP' => 7,
+            'AGRO' => 7,
+        ];
+
+        $carreras = $carreras->sortBy(fn ($carrera) => [
+            $ordenJerarquico[$carrera->codigo] ?? 99,
+            $carrera->nombre,
+        ])->values();
 
         return view('carreras.list', compact('carreras'));
     }
@@ -37,7 +57,7 @@ class CarreraController extends Controller
     // ============================================================
     public function show($id_carrera)
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         // 1. Cargar la carrera por ID
@@ -123,7 +143,7 @@ class CarreraController extends Controller
         $carrera = Carrera::findOrFail($id_carrera);
 
         $data = $request->validate([
-            'codigo' => 'required|string|max:20|unique:carreras,codigo,' . $carrera->id_carrera . ',id_carrera',
+            'codigo' => 'required|string|max:20|unique:carreras,codigo,'.$carrera->id_carrera.',id_carrera',
             'nombre' => 'required|string|max:100',
         ]);
 

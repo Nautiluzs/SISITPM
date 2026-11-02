@@ -18,7 +18,7 @@
     <div style="background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 30px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02); max-width: 800px; margin: 0 auto;">
         <h2 style="font-size: 18px; font-weight: 800; color: #0f172a; margin: 0 0 16px 0;">Seleccionar Ambiente a Liberar</h2>
 
-        <form id="formLiberacion" method="GET" onsubmit="event.preventDefault(); generarActaLiberacion();" style="display: flex; flex-direction: column; gap: 18px;">
+        <form id="formLiberacion" method="GET" style="display: flex; flex-direction: column; gap: 18px;">
 
             {{-- FILTRAR POR CARRERA --}}
             <div>
@@ -51,13 +51,6 @@
                 {{-- Mensaje de error abajo si falta seleccionar --}}
                 <span id="errorAmbienteLib" style="font-size: 11px; color: #dc2626; font-weight: 700; margin-top: 4px; display: none;">⚠️ Debe seleccionar un ambiente para generar el acta.</span>
             </div>
-
-            <div style="display: flex; justify-content: flex-end; pt: 16px; border-top: 1px solid #f1f5f9;">
-                <button type="button" onclick="generarActaLiberacion()"
-                        style="padding: 11px 20px; background: #7c3aed; color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(124, 58, 237, 0.2);">
-                    📄 Generar Acta de Liberación
-                </button>
-            </div>
         </form>
     </div>
 
@@ -72,35 +65,4 @@
 
 </div>
 
-<script>
-    function filtrarAmbientesLib(carreraId) {
-        const select = document.getElementById('selectAmbienteLib');
-        const opciones = select.options;
-        for (let i = 0; i < opciones.length; i++) {
-            let opt = opciones[i];
-            if (!opt.value) continue;
-            let car = opt.getAttribute('data-carrera');
-            if (!carreraId || car === carreraId) {
-                opt.style.display = '';
-            } else {
-                opt.style.display = 'none';
-            }
-        }
-        select.value = "";
-    }
-
-    function generarActaLiberacion() {
-        const selectAmbiente = document.getElementById('selectAmbienteLib');
-        const errorAmbiente = document.getElementById('errorAmbienteLib');
-
-        if (!selectAmbiente.value) {
-            errorAmbiente.style.display = 'block';
-            selectAmbiente.style.borderColor = '#dc2626';
-        } else {
-            errorAmbiente.style.display = 'none';
-            selectAmbiente.style.borderColor = '#cbd5e1';
-            window.open('{{ url('actas/liberacion') }}/' + selectAmbiente.value + '/pdf', '_blank');
-        }
-    }
-</script>
 @endsection

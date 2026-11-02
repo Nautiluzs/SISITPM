@@ -58,23 +58,27 @@
                 <div class="section-title">Identificación</div>
 
                 <label>C.I. *
-                    <input name="ci" maxlength="20" required
+                    <input name="ci" maxlength="20"
                            class="{{ $errors->has('ci') ? 'input-error' : '' }}"
                            value="{{ old('ci') }}">
                     @error('ci') <span class="error-msg">{{ $message }}</span> @enderror
                 </label>
 
                 <label>Email *
-                    <input name="email" type="email" required
+                    <input name="email" type="email"
                            class="{{ $errors->has('email') ? 'input-error' : '' }}"
                            value="{{ old('email') }}">
                     @error('email') <span class="error-msg">{{ $message }}</span> @enderror
                 </label>
 
                 <label class="full">Nombre Completo *
-                    <input name="nombre_completo" maxlength="150" required
+                    <input name="nombre_completo" maxlength="150"
                            class="{{ $errors->has('nombre_completo') ? 'input-error' : '' }}"
-                           value="{{ old('nombre_completo') }}">
+                           value="{{ old('nombre_completo') }}"
+                           oninput="this.value = this.value.toLocaleUpperCase('es-ES')">
+                    <small style="display:block;margin-top:4px;color:#2563eb;font-size:12px;">
+                        Aviso: el nombre se guardará en MAYÚSCULAS automáticamente.
+                    </small>
                     @error('nombre_completo') <span class="error-msg">{{ $message }}</span> @enderror
                 </label>
 
@@ -82,14 +86,14 @@
                 <div class="section-title">Cargo y Unidad</div>
 
                 <label>Cargo *
-                    <input name="cargo" maxlength="100" required
+                    <input name="cargo" maxlength="100"
                            class="{{ $errors->has('cargo') ? 'input-error' : '' }}"
                            value="{{ old('cargo') }}">
                     @error('cargo') <span class="error-msg">{{ $message }}</span> @enderror
                 </label>
 
                 <label>Unidad *
-                    <input name="unidad" maxlength="100" required
+                    <input name="unidad" maxlength="100"
                            class="{{ $errors->has('unidad') ? 'input-error' : '' }}"
                            value="{{ old('unidad') }}">
                     @error('unidad') <span class="error-msg">{{ $message }}</span> @enderror
@@ -99,7 +103,7 @@
                 <div class="section-title">Rol y Asignación</div>
 
                 <label>Rol *
-                    <select name="rol" required class="{{ $errors->has('rol') ? 'input-error' : '' }}">
+                    <select name="rol" class="{{ $errors->has('rol') ? 'input-error' : '' }}">
                         <option value="">— Seleccione rol —</option>
                         <option value="ADMINISTRADOR"     {{ old('rol') == 'ADMINISTRADOR'     ? 'selected' : '' }}>Administrador</option>
                         <option value="INVENTARIADOR"     {{ old('rol') == 'INVENTARIADOR'     ? 'selected' : '' }}>Inventariador</option>

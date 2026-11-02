@@ -4,11 +4,17 @@
 @php use Illuminate\Support\Str; @endphp
 
     @if (session('success'))
-        <div style="background: #dcfce7; border: 1px solid #bbf7d0; color: #166534; padding: 14px 20px; border-radius: 12px; margin-bottom: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-            <svg style="width: 20px; height: 20px; color: #16a34a;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <div class="mb-5 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-semibold text-emerald-800 shadow-sm dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200" role="status">
+            <svg class="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
             </svg>
             {{ session('success') }}
+        </div>
+    @endif
+    @if (session('error'))
+        <div class="mb-5 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 font-semibold text-red-800 shadow-sm dark:border-red-800 dark:bg-red-950/60 dark:text-red-200" role="alert">
+            <span aria-hidden="true">⚠️</span>
+            {{ session('error') }}
         </div>
     @endif
 
@@ -34,7 +40,7 @@
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; margin-bottom:18px;">
             <div>
                 <h2 style="font-size: 18px; font-weight: 800; color: #0f172a; margin: 0;">Ambientes relacionados</h2>
-                <p style="font-size: 13px; color: #64748b; margin: 4px 0 0 0;">Haz doble clic en cualquier ambiente para ingresar.</p>
+                <p style="font-size: 13px; color: #64748b; margin: 4px 0 0 0;">Selecciona el botón Ingresar del ambiente que deseas abrir.</p>
             </div>
 
             @if (auth()->check() && auth()->user()->rol === 'ADMINISTRADOR')
@@ -73,7 +79,10 @@
 
             <div class="folders-grid">
     @foreach ($ambientes as $amb)
-        <div class="folder-card" ondblclick="window.location.href='{{ route('ambientes.show', $amb->id_ambiente) }}'">
+        <div class="folder-card" style="position:relative;">
+            <span style="position:absolute;top:12px;left:12px;color:#000;font-size:18px;font-weight:900;z-index:2;">
+                {{ $amb->id_ambiente }}
+            </span>
 
             {{-- ⭐ BOTÓN ARRINCONADO ARRIBA A LA DERECHA --}}
             @if (auth()->check() && auth()->user()->rol === 'ADMINISTRADOR')
@@ -85,7 +94,7 @@
 
             <div>
                 {{-- ⭐ Acolchado a la derecha (padding-right: 75px) para que el botón no tape el código --}}
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-right: 75px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-right: 75px; padding-top: 24px;">
                     <span style="font-size: 28px;">📂</span>
                     <span style="font-size: 10px; font-weight: 800; background: #eff6ff; color: #1d4ed8; padding: 2px 6px; border-radius: 4px;">
                         {{ $amb->codigo ?? 'S/C' }}
@@ -108,6 +117,10 @@
 
             {{-- Botones de edición y eliminación --}}
             <div style="display: flex; gap: 6px; justify-content: flex-end; border-top: 1px solid #f1f5f9; padding-top: 10px;" onclick="event.stopPropagation();">
+                <a href="{{ route('ambientes.show', $amb->id_ambiente) }}"
+                    style="background:#2563eb;color:#fff;padding:7px 12px;border-radius:8px;font-weight:700;text-decoration:none;font-size:12px;">
+                    Ingresar
+                </a>
                 @if (auth()->check() && auth()->user()->rol === 'ADMINISTRADOR')
                     <button type="button" onclick='editAmbiente({{ json_encode($amb, JSON_UNESCAPED_UNICODE) }})' title="Editar ambiente"
                         style="background:#fef9c3; color:#ca8a04; width: 32px; height: 32px; border-radius: 8px; border: 1px solid #fde047; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor:pointer;">
@@ -188,35 +201,36 @@
                 <button type="button" onclick="closeAmbienteModal()" style="background: #f1f5f9; border: none; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; color: #475569;">×</button>
             </div>
 
-            <form id="ambiente-form" method="POST" action="{{ route('ambientes.store', ['id_carrera' => $carrera->id_carrera]) }}">
+            <form id="ambiente-form" method="POST" action="{{ old('_method') === 'PUT' && old('ambiente_id') ? route('ambientes.update', ['id_carrera' => $carrera->id_carrera, 'id_ambiente' => old('ambiente_id')]) : route('ambientes.store', ['id_carrera' => $carrera->id_carrera]) }}">
                 @csrf
-                <input id="ambiente-method" type="hidden" name="_method" value="POST">
+                <input id="ambiente-method" type="hidden" name="_method" value="{{ old('_method', 'POST') }}">
+                <input id="ambiente-id" type="hidden" name="ambiente_id" value="{{ old('ambiente_id') }}">
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 15px;">
                     <div>
-                        <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px; color: #334155;">Código *</label>
-                        <input id="amb-codigo" name="codigo" value="{{ old('codigo') }}" maxlength="20" style="width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid {{ $errors->has('codigo') ? '#dc2626' : '#cbd5e1' }};">
+                        <label for="amb-codigo" class="mb-1 block text-xs font-bold text-slate-700 dark:text-slate-200">Código *</label>
+                        <input id="amb-codigo" name="codigo" value="{{ old('codigo') }}" maxlength="30" aria-describedby="amb-codigo-error" class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 {{ $errors->has('codigo') ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'border-slate-300 focus:border-blue-500 focus:ring-blue-200' }}">
                         @error('codigo')
-                            <span style="color: #dc2626; font-size: 11px; font-weight: 600; display: block; margin-top: 3px;">{{ $message }}</span>
+                            <p id="amb-codigo-error" class="mt-1 text-xs font-medium text-red-600 dark:text-red-400" role="alert">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
-                        <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px; color: #334155;">Nombre *</label>
-                        <input id="amb-nombre" name="nombre" value="{{ old('nombre') }}" maxlength="100" style="width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid {{ $errors->has('nombre') ? '#dc2626' : '#cbd5e1' }};">
+                        <label for="amb-nombre" class="mb-1 block text-xs font-bold text-slate-700 dark:text-slate-200">Nombre *</label>
+                        <input id="amb-nombre" name="nombre" value="{{ old('nombre') }}" maxlength="100" aria-describedby="amb-nombre-error" class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 {{ $errors->has('nombre') ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'border-slate-300 focus:border-blue-500 focus:ring-blue-200' }}">
                         @error('nombre')
-                            <span style="color: #dc2626; font-size: 11px; font-weight: 600; display: block; margin-top: 3px;">{{ $message }}</span>
+                            <p id="amb-nombre-error" class="mt-1 text-xs font-medium text-red-600 dark:text-red-400" role="alert">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
-                        <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px; color: #334155;">Bloque *</label>
-                        <input id="amb-bloque" name="bloque" value="{{ old('bloque') }}" maxlength="10" style="width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid {{ $errors->has('bloque') ? '#dc2626' : '#cbd5e1' }};">
+                        <label for="amb-bloque" class="mb-1 block text-xs font-bold text-slate-700 dark:text-slate-200">Bloque *</label>
+                        <input id="amb-bloque" name="bloque" value="{{ old('bloque') }}" maxlength="20" aria-describedby="amb-bloque-error" class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 {{ $errors->has('bloque') ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'border-slate-300 focus:border-blue-500 focus:ring-blue-200' }}">
                         @error('bloque')
-                            <span style="color: #dc2626; font-size: 11px; font-weight: 600; display: block; margin-top: 3px;">{{ $message }}</span>
+                            <p id="amb-bloque-error" class="mt-1 text-xs font-medium text-red-600 dark:text-red-400" role="alert">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
-                        <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px; color: #334155;">Piso *</label>
-                        <select id="amb-piso" name="piso" style="width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid {{ $errors->has('piso') ? '#dc2626' : '#cbd5e1' }};">
+                        <label for="amb-piso" class="mb-1 block text-xs font-bold text-slate-700 dark:text-slate-200">Piso *</label>
+                        <select id="amb-piso" name="piso" aria-describedby="amb-piso-error" class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 {{ $errors->has('piso') ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'border-slate-300 focus:border-blue-500 focus:ring-blue-200' }}">
                             <option value="">— Seleccionar piso —</option>
                             <option value="PB" {{ old('piso') == 'PB' ? 'selected' : '' }}>PB</option>
                             <option value="1" {{ old('piso') == '1' ? 'selected' : '' }}>PISO 1</option>
@@ -231,14 +245,14 @@
                             <option value="10" {{ old('piso') == '10' ? 'selected' : '' }}>PISO 10</option>
                         </select>
                         @error('piso')
-                            <span style="color: #dc2626; font-size: 11px; font-weight: 600; display: block; margin-top: 3px;">{{ $message }}</span>
+                            <p id="amb-piso-error" class="mt-1 text-xs font-medium text-red-600 dark:text-red-400" role="alert">{{ $message }}</p>
                         @enderror
                     </div>
                 </div>
 
                 <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 15px; margin-top: 15px;">
-                    <button type="button" onclick="closeAmbienteModal()" style="background: #e2e8f0; color: #475569; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; cursor: pointer;">Cancelar</button>
-                    <button type="submit" style="background: #2563eb; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; cursor: pointer;">Guardar</button>
+                    <button type="button" onclick="closeAmbienteModal()" class="rounded-lg bg-slate-200 px-4 py-2.5 font-bold text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600">Cancelar</button>
+                    <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2.5 font-bold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300">Guardar</button>
                 </div>
             </form>
         </div>
@@ -302,6 +316,7 @@
             form.reset();
             form.action = '{{ route('ambientes.store', ['id_carrera' => $carrera->id_carrera]) }}';
             document.getElementById('ambiente-method').value = 'POST';
+            document.getElementById('ambiente-id').value = '';
             document.getElementById('ambiente-modal-title').textContent = 'Nuevo ambiente';
             document.getElementById('ambiente-modal').style.setProperty('display', 'flex', 'important');
         }
@@ -318,6 +333,7 @@
 
             form.action = '{{ url('/carreras') }}/' + carreraId + '/ambientes/' + ambienteId;
             document.getElementById('ambiente-method').value = 'PUT';
+            document.getElementById('ambiente-id').value = ambienteId;
             document.getElementById('ambiente-modal-title').textContent = 'Editar ambiente';
             document.getElementById('amb-codigo').value = amb.codigo || '';
             document.getElementById('amb-nombre').value = amb.nombre || '';
@@ -341,11 +357,25 @@
                 document.getElementById('delete-form-' + currentAmbienteIdToDelete).submit();
             }
         });
+
+        @if(request('editar_ambiente'))
+            @foreach($ambientes as $ambiente)
+                @if((int) request('editar_ambiente') === (int) $ambiente->id_ambiente)
+                    editAmbiente(@json($ambiente));
+                @endif
+            @endforeach
+        @endif
     </script>
 
     @if ($errors->any())
         <script>
             document.addEventListener('DOMContentLoaded', function() {
+                const ambienteId = @json(old('ambiente_id'));
+                const form = document.getElementById('ambiente-form');
+                if (ambienteId && @json(old('_method') === 'PUT')) {
+                    form.action = '{{ url('/carreras') }}/{{ $carrera->id_carrera }}/ambientes/' + ambienteId;
+                    document.getElementById('ambiente-modal-title').textContent = 'Editar ambiente';
+                }
                 document.getElementById('ambiente-modal').style.setProperty('display', 'flex', 'important');
             });
         </script>

@@ -61,7 +61,7 @@
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; margin-bottom:18px;">
             <div>
                 <h2 style="font-size: 18px; font-weight: 800; color: #0f172a; margin: 0;">📁 Categorías en este Ambiente</h2>
-                <p style="font-size: 13px; color: #64748b; margin: 4px 0 0 0;">Haz doble clic en cualquier categoría para ver sus activos.</p>
+                <p style="font-size: 13px; color: #64748b; margin: 4px 0 0 0;">Selecciona el botón Ingresar de la categoría que deseas abrir.</p>
             </div>
 
             @if (auth()->check() && auth()->user()->rol === 'ADMINISTRADOR')
@@ -99,9 +99,12 @@
 
             <div class="folders-grid">
                 @foreach ($categorias as $cat)
-                    <div class="folder-card" ondblclick="window.location.href='{{ route('categorias.show', $cat->id_categoria) }}'">
+                    <div class="folder-card" style="position:relative;">
+                        <span style="position:absolute;top:12px;left:12px;color:#000;font-size:18px;font-weight:900;z-index:2;">
+                            {{ $cat->id_categoria }}
+                        </span>
                         <div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-top: 24px;">
                                 <span style="font-size: 28px;">📁</span>
                                 <span style="font-size: 10px; font-weight: 800; background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px;">
                                     {{ $cat->activos_count ?? 0 }} activos
@@ -119,18 +122,22 @@
                         </div>
 
                         <div style="display: flex; gap: 6px; justify-content: flex-end; border-top: 1px solid #f1f5f9; padding-top: 10px;" onclick="event.stopPropagation();">
+                            <a href="{{ route('categorias.show', $cat->id_categoria) }}"
+                               style="flex:1;text-align:center;background:#1e293b;color:#fff;padding:8px 7px;border-radius:8px;font-weight:800;text-decoration:none;font-size:11px;">
+                                Ingresar
+                            </a>
                             @if (auth()->check() && auth()->user()->rol === 'ADMINISTRADOR')
                                 <button type="button" onclick='editCategoria({{ json_encode($cat, JSON_UNESCAPED_UNICODE) }})' title="Editar categoría"
-                                    style="background:#fef9c3; color:#ca8a04; width: 32px; height: 32px; border-radius: 8px; border: 1px solid #fde047; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor:pointer;">
-                                    ✏️
+                                    style="flex:1;background:#f59e0b; color:#111827; padding:8px 7px;border:0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;cursor:pointer;">
+                                    Editar
                                 </button>
 
                                 <form id="delete-cat-form-{{ $cat->id_categoria }}" method="POST" action="{{ route('categorias.destroy', $cat->id_categoria) }}" style="margin: 0; display: flex;">
                                     @csrf
                                     @method('DELETE')
                                     <button type="button" onclick="openDeleteCategoriaModal('{{ $cat->id_categoria }}')" title="Eliminar categoría"
-                                        style="background:#fee2e2; color:#dc2626; width: 32px; height: 32px; border-radius: 8px; border: 1px solid #fca5a5; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor:pointer;">
-                                        🗑️
+                                        style="flex:1;background:#ef0040;color:#fff;border:0;padding:8px 7px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;cursor:pointer;">
+                                        Eliminar
                                     </button>
                                 </form>
                             @endif
@@ -159,15 +166,24 @@
                 <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 15px;">
                     <div>
                         <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px; color: #334155;">Código *</label>
-                        <input id="cat-codigo" name="codigo" value="{{ old('codigo') }}" maxlength="20" required style="width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid #cbd5e1; box-sizing: border-box;">
+                        <input id="cat-codigo" name="codigo" value="{{ old('codigo') }}" maxlength="20" aria-describedby="cat-codigo-error" style="width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid {{ $errors->has('codigo') ? '#dc2626' : '#cbd5e1' }}; box-sizing: border-box;">
+                        @error('codigo')
+                            <span id="cat-codigo-error" style="display:block;margin-top:5px;color:#dc2626;font-size:11px;font-weight:700;">{{ $message }}</span>
+                        @enderror
                     </div>
                     <div>
                         <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px; color: #334155;">Nombre *</label>
-                        <input id="cat-nombre" name="nombre" value="{{ old('nombre') }}" maxlength="100" required style="width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid #cbd5e1; box-sizing: border-box;">
+                        <input id="cat-nombre" name="nombre" value="{{ old('nombre') }}" maxlength="100" aria-describedby="cat-nombre-error" style="width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid {{ $errors->has('nombre') ? '#dc2626' : '#cbd5e1' }}; box-sizing: border-box;">
+                        @error('nombre')
+                            <span id="cat-nombre-error" style="display:block;margin-top:5px;color:#dc2626;font-size:11px;font-weight:700;">{{ $message }}</span>
+                        @enderror
                     </div>
                     <div>
                         <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px; color: #334155;">Descripción</label>
-                        <textarea id="cat-descripcion" name="descripcion" rows="3" maxlength="255" style="width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid #cbd5e1; box-sizing: border-box; resize: none;">{{ old('descripcion') }}</textarea>
+                        <textarea id="cat-descripcion" name="descripcion" rows="3" maxlength="255" aria-describedby="cat-descripcion-error" style="width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid {{ $errors->has('descripcion') ? '#dc2626' : '#cbd5e1' }}; box-sizing: border-box; resize: none;">{{ old('descripcion') }}</textarea>
+                        @error('descripcion')
+                            <span id="cat-descripcion-error" style="display:block;margin-top:5px;color:#dc2626;font-size:11px;font-weight:700;">{{ $message }}</span>
+                        @enderror
                     </div>
                 </div>
 
@@ -241,5 +257,17 @@
                 document.getElementById('delete-cat-form-' + currentCatIdToDelete).submit();
             }
         });
+
+        @if(request('editar_categoria'))
+            @foreach($categorias as $categoria)
+                @if((int) request('editar_categoria') === (int) $categoria->id_categoria)
+                    editCategoria(@json($categoria));
+                @endif
+            @endforeach
+        @endif
+
+        @if ($errors->hasAny(['codigo', 'nombre', 'descripcion', 'id_ambiente']))
+            document.getElementById('categoria-modal').style.setProperty('display', 'flex', 'important');
+        @endif
     </script>
 @endsection

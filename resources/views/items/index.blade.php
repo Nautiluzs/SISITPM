@@ -7,7 +7,7 @@
     <div style="background:linear-gradient(135deg,#0f766e 0%,#0d9488 100%);padding:28px;border-radius:16px;color:white;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;margin-bottom:24px;box-shadow:0 10px 15px -3px rgba(15,118,110,.2);">
         <div style="flex:1;min-width:280px;">
             <span style="background:rgba(255,255,255,.2);padding:5px 12px;border-radius:20px;font-size:11px;font-weight:800;text-transform:uppercase;">Ítems</span>
-            <h2 style="font-size:26px;font-weight:800;margin:8px 0 4px 0;">Gestión de Ítems</h2>
+            <h2 style="font-size:26px;font-weight:800;margin:8px 0 4px 0;">Gestión de personal asignado</h2>
             <p style="opacity:.9;font-size:14px;margin:0;">El ítem pertenece a la institución, no a la persona. Un ítem admite 2, 3 o más custodios y sobrevive a los cambios de titular.</p>
         </div>
 

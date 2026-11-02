@@ -45,6 +45,7 @@
                 .edit-grid input:focus, .edit-grid select:focus {
                     outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1);
                 }
+                .error-msg { color:#dc2626;font-size:11px;font-weight:600;margin-top:2px;display:block; }
                 .section-title {
                     grid-column:span 2;font-size:11px;font-weight:800;color:#2563eb;text-transform:uppercase;
                     margin:8px 0 -6px 0;padding-bottom:6px;border-bottom:1px solid #e2e8f0;
@@ -57,33 +58,43 @@
                 <div class="section-title">Identificación</div>
 
                 <label>C.I. *
-                    <input name="ci" maxlength="20" required value="{{ old('ci', $usuario->ci) }}">
+                    <input name="ci" maxlength="20" value="{{ old('ci', $usuario->ci) }}">
+                    @error('ci') <span class="error-msg">{{ $message }}</span> @enderror
                 </label>
 
                 <label>Email *
-                    <input name="email" type="email" required value="{{ old('email', $usuario->email) }}">
+                    <input name="email" type="email" value="{{ old('email', $usuario->email) }}">
+                    @error('email') <span class="error-msg">{{ $message }}</span> @enderror
                 </label>
 
                 <label class="full">Nombre Completo *
-                    <input name="nombre_completo" maxlength="150" required value="{{ old('nombre_completo', $usuario->nombre_completo) }}">
+                    <input name="nombre_completo" maxlength="150"
+                           value="{{ old('nombre_completo', $usuario->nombre_completo) }}"
+                           oninput="this.value = this.value.toLocaleUpperCase('es-ES')">
+                    <small style="display:block;margin-top:4px;color:#2563eb;font-size:12px;">
+                        Aviso: el nombre se guardará en MAYÚSCULAS automáticamente.
+                    </small>
+                    @error('nombre_completo') <span class="error-msg">{{ $message }}</span> @enderror
                 </label>
 
                 {{-- CARGO Y UNIDAD --}}
                 <div class="section-title">Cargo y Unidad</div>
 
                 <label>Cargo *
-                    <input name="cargo" maxlength="100" required value="{{ old('cargo', $usuario->cargo) }}">
+                    <input name="cargo" maxlength="100" value="{{ old('cargo', $usuario->cargo) }}">
+                    @error('cargo') <span class="error-msg">{{ $message }}</span> @enderror
                 </label>
 
                 <label>Unidad *
-                    <input name="unidad" maxlength="100" required value="{{ old('unidad', $usuario->unidad) }}">
+                    <input name="unidad" maxlength="100" value="{{ old('unidad', $usuario->unidad) }}">
+                    @error('unidad') <span class="error-msg">{{ $message }}</span> @enderror
                 </label>
 
                 {{-- ROL Y CARRERA --}}
                 <div class="section-title">Rol y Asignación</div>
 
                 <label>Rol *
-                    <select name="rol" required>
+                    <select name="rol">
                         <option value="ADMINISTRADOR"     {{ old('rol', $usuario->rol) == 'ADMINISTRADOR'     ? 'selected' : '' }}>Administrador</option>
                         <option value="INVENTARIADOR"     {{ old('rol', $usuario->rol) == 'INVENTARIADOR'     ? 'selected' : '' }}>Inventariador</option>
                         <option value="AYUDANTE"          {{ old('rol', $usuario->rol) == 'AYUDANTE'          ? 'selected' : '' }}>Ayudante</option>
@@ -91,6 +102,7 @@
                         <option value="JEFE_CARRERA"      {{ old('rol', $usuario->rol) == 'JEFE_CARRERA'      ? 'selected' : '' }}>Jefe de Carrera</option>
                         <option value="RECTOR"            {{ old('rol', $usuario->rol) == 'RECTOR'            ? 'selected' : '' }}>Rector</option>
                     </select>
+                    @error('rol') <span class="error-msg">{{ $message }}</span> @enderror
                 </label>
 
                 <label>Carrera
@@ -103,6 +115,7 @@
                             </option>
                         @endforeach
                     </select>
+                    @error('carrera_id') <span class="error-msg">{{ $message }}</span> @enderror
                 </label>
 
                 <label>Estado
@@ -110,6 +123,7 @@
                         <option value="ACTIVO"   {{ old('estado', $usuario->estado) == 'ACTIVO'   ? 'selected' : '' }}>Activo</option>
                         <option value="INACTIVO" {{ old('estado', $usuario->estado) == 'INACTIVO' ? 'selected' : '' }}>Inactivo</option>
                     </select>
+                    @error('estado') <span class="error-msg">{{ $message }}</span> @enderror
                 </label>
 
                 {{-- ÍTEMS --}}

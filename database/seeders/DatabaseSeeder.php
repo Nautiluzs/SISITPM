@@ -10,8 +10,6 @@ use App\Models\Item;
 use App\Models\User;
 use Illuminate\Database\Seeder as BaseSeeder;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 class DatabaseSeeder extends BaseSeeder
 {
@@ -20,7 +18,7 @@ class DatabaseSeeder extends BaseSeeder
         try {
             $this->runSeeder();
         } catch (\Throwable $e) {
-            $this->command->warn('⚠️ Seeder saltado por error: ' . $e->getMessage());
+            $this->command->warn('⚠️ Seeder saltado por error: '.$e->getMessage());
         }
     }
 
@@ -31,13 +29,13 @@ class DatabaseSeeder extends BaseSeeder
         // 1. CARRERAS
         // ============================================================
         $carreras = [
-            ['codigo' => 'SIF', 'nombre' => 'Sistemas Informáticos'],
-            ['codigo' => 'INA', 'nombre' => 'Industrias de Alimentos'],
-            ['codigo' => 'GTR', 'nombre' => 'Gastronomía'],
-            ['codigo' => 'MAZ', 'nombre' => 'Mecánica Automotriz'],
             ['codigo' => 'MEI', 'nombre' => 'Mecánica Industrial'],
+            ['codigo' => 'MAZ', 'nombre' => 'Mecánica Automotriz'],
+            ['codigo' => 'INA', 'nombre' => 'Industrias de Alimentos'],
+            ['codigo' => 'SIF', 'nombre' => 'Sistemas Informáticos'],
+            ['codigo' => 'GTR', 'nombre' => 'Gastronomía'],
             ['codigo' => 'ELC', 'nombre' => 'Electrónica'],
-            ['codigo' => 'AGP', 'nombre' => 'Agropecuaria'],
+            ['codigo' => 'AGRO', 'nombre' => 'Agropecuaria'],
             ['codigo' => 'ADM', 'nombre' => 'Unidades Administrativas'],
         ];
 
@@ -53,7 +51,7 @@ class DatabaseSeeder extends BaseSeeder
         $mazId = $carreraIds['MAZ'];
         $meiId = $carreraIds['MEI'];
         $elcId = $carreraIds['ELC'];
-        $agpId = $carreraIds['AGP'];
+        $agroId = $carreraIds['AGRO'];
         $admId = $carreraIds['ADM'];
 
         // ============================================================
@@ -278,11 +276,11 @@ class DatabaseSeeder extends BaseSeeder
             ['ci' => '4367554', 'nombre_completo' => 'Javier Jimmy Tarqui Valeriano', 'email' => 'javier.tarqui@itpm.edu.bo', 'password' => Hash::make('docente123'), 'cargo' => 'Docente', 'unidad' => 'Escuela de Electrónica', 'rol' => 'DOCENTE_CUSTODIO', 'estado' => 'ACTIVO', 'id_carrera' => $elcId, 'puede_verificar' => false, 'items' => ['157']],
             ['ci' => '3530492', 'nombre_completo' => 'Juan Carlos Miranda Sanchez', 'email' => 'juan.miranda@itpm.edu.bo', 'password' => Hash::make('docente123'), 'cargo' => 'Docente', 'unidad' => 'Escuela de Electrónica', 'rol' => 'DOCENTE_CUSTODIO', 'estado' => 'ACTIVO', 'id_carrera' => $elcId, 'puede_verificar' => false, 'items' => ['164']],
 
-            // ---------------- TRANSVERSALES / AGP ----------------
+            // ---------------- TRANSVERSALES / AGRO ----------------
             ['ci' => '4810184', 'nombre_completo' => 'Venancio Esteban Cora Quispe', 'email' => 'venancio.cora@itpm.edu.bo', 'password' => Hash::make('docente123'), 'cargo' => 'Docente', 'unidad' => 'Áreas Transversales', 'rol' => 'DOCENTE_CUSTODIO', 'estado' => 'ACTIVO', 'id_carrera' => null, 'puede_verificar' => false, 'items' => ['153']],
-            ['ci' => '3425619', 'nombre_completo' => 'Eloy Tantani Coaquira', 'email' => 'eloy.tantani@itpm.edu.bo', 'password' => Hash::make('docente123'), 'cargo' => 'Docente Agropecuaria', 'unidad' => 'Sub Sede Corpa - Agropecuaria', 'rol' => 'DOCENTE_CUSTODIO', 'estado' => 'ACTIVO', 'id_carrera' => $agpId, 'puede_verificar' => false, 'items' => ['155']],
-            ['ci' => '5972043', 'nombre_completo' => 'Felipa Zambrana Mamani', 'email' => 'felipa.zambrana@itpm.edu.bo', 'password' => Hash::make('docente123'), 'cargo' => 'Docente Agropecuaria', 'unidad' => 'Sub Sede Corpa - Agropecuaria', 'rol' => 'DOCENTE_CUSTODIO', 'estado' => 'ACTIVO', 'id_carrera' => $agpId, 'puede_verificar' => false, 'items' => ['156']],
-            ['ci' => '3489128', 'nombre_completo' => 'Santiago Chambi Macuchapi', 'email' => 'santiago.chambi@itpm.edu.bo', 'password' => Hash::make('docente123'), 'cargo' => 'Docente Agropecuaria', 'unidad' => 'Sub Sede Corpa - Agropecuaria', 'rol' => 'DOCENTE_CUSTODIO', 'estado' => 'ACTIVO', 'id_carrera' => $agpId, 'puede_verificar' => false, 'items' => ['161']],
+            ['ci' => '3425619', 'nombre_completo' => 'Eloy Tantani Coaquira', 'email' => 'eloy.tantani@itpm.edu.bo', 'password' => Hash::make('docente123'), 'cargo' => 'Docente Agropecuaria', 'unidad' => 'Sub Sede Corpa - Agropecuaria', 'rol' => 'DOCENTE_CUSTODIO', 'estado' => 'ACTIVO', 'id_carrera' => $agroId, 'puede_verificar' => false, 'items' => ['155']],
+            ['ci' => '5972043', 'nombre_completo' => 'Felipa Zambrana Mamani', 'email' => 'felipa.zambrana@itpm.edu.bo', 'password' => Hash::make('docente123'), 'cargo' => 'Docente Agropecuaria', 'unidad' => 'Sub Sede Corpa - Agropecuaria', 'rol' => 'DOCENTE_CUSTODIO', 'estado' => 'ACTIVO', 'id_carrera' => $agroId, 'puede_verificar' => false, 'items' => ['156']],
+            ['ci' => '3489128', 'nombre_completo' => 'Santiago Chambi Macuchapi', 'email' => 'santiago.chambi@itpm.edu.bo', 'password' => Hash::make('docente123'), 'cargo' => 'Docente Agropecuaria', 'unidad' => 'Sub Sede Corpa - Agropecuaria', 'rol' => 'DOCENTE_CUSTODIO', 'estado' => 'ACTIVO', 'id_carrera' => $agroId, 'puede_verificar' => false, 'items' => ['161']],
             ['ci' => '6138095', 'nombre_completo' => 'Pamela Quispe Coria', 'email' => 'pamela.quispe@itpm.edu.bo', 'password' => Hash::make('docente123'), 'cargo' => 'Docente', 'unidad' => 'Áreas Transversales', 'rol' => 'DOCENTE_CUSTODIO', 'estado' => 'ACTIVO', 'id_carrera' => null, 'puede_verificar' => false, 'items' => ['711']],
         ];
 
@@ -318,9 +316,9 @@ class DatabaseSeeder extends BaseSeeder
             Ambiente::updateOrCreate(
                 ['codigo' => $ambiente['codigo']],
                 [
-                    'nombre'     => $ambiente['nombre'],
-                    'bloque'     => $ambiente['bloque'],
-                    'piso'       => $ambiente['piso'],
+                    'nombre' => $ambiente['nombre'],
+                    'bloque' => $ambiente['bloque'],
+                    'piso' => $ambiente['piso'],
                     'id_carrera' => $carreraIds[$ambiente['carrera']],
                 ]
             );
@@ -370,21 +368,31 @@ class DatabaseSeeder extends BaseSeeder
 
         foreach ($personal as $persona) {
             $numerosItems = $persona['items'] ?? [];
-            $unidad       = $persona['unidad'] ?? null;
-            $cargo        = $persona['cargo'] ?? null;
-            $idCarrera    = $persona['id_carrera'] ?? null;
+            $unidad = $persona['unidad'] ?? null;
+            $cargo = $persona['cargo'] ?? null;
+            $idCarrera = $persona['id_carrera'] ?? null;
 
             $ambienteCodigo = null;
             if ($unidad) {
-                if (str_contains($unidad, 'Laboratorio 1'))     $ambienteCodigo = 'LAB-1';
-                elseif (str_contains($unidad, 'Laboratorio 2')) $ambienteCodigo = 'LAB-2';
-                elseif (str_contains($unidad, 'Laboratorio 3')) $ambienteCodigo = 'LAB-3';
-                elseif (str_contains($unidad, 'Redes'))         $ambienteCodigo = 'RED-1';
-                elseif (str_contains($unidad, 'Rectorado'))     $ambienteCodigo = 'REC-1';
-                elseif (str_contains($unidad, 'Secretaría'))    $ambienteCodigo = 'SEC-1';
-                elseif (str_contains($unidad, 'Almacén'))       $ambienteCodigo = 'ALM-1';
-                elseif (str_contains($unidad, 'Biblioteca'))    $ambienteCodigo = 'BIB-1';
-                elseif (str_contains($unidad, 'Dirección Administrativa')) $ambienteCodigo = 'ADM-1';
+                if (str_contains($unidad, 'Laboratorio 1')) {
+                    $ambienteCodigo = 'LAB-1';
+                } elseif (str_contains($unidad, 'Laboratorio 2')) {
+                    $ambienteCodigo = 'LAB-2';
+                } elseif (str_contains($unidad, 'Laboratorio 3')) {
+                    $ambienteCodigo = 'LAB-3';
+                } elseif (str_contains($unidad, 'Redes')) {
+                    $ambienteCodigo = 'RED-1';
+                } elseif (str_contains($unidad, 'Rectorado')) {
+                    $ambienteCodigo = 'REC-1';
+                } elseif (str_contains($unidad, 'Secretaría')) {
+                    $ambienteCodigo = 'SEC-1';
+                } elseif (str_contains($unidad, 'Almacén')) {
+                    $ambienteCodigo = 'ALM-1';
+                } elseif (str_contains($unidad, 'Biblioteca')) {
+                    $ambienteCodigo = 'BIB-1';
+                } elseif (str_contains($unidad, 'Dirección Administrativa')) {
+                    $ambienteCodigo = 'ADM-1';
+                }
             }
 
             foreach ($numerosItems as $numeroItem) {
@@ -392,10 +400,10 @@ class DatabaseSeeder extends BaseSeeder
                     ['numero_item' => $numeroItem],
                     [
                         'descripcion' => $cargo,
-                        'unidad'      => $unidad,
-                        'id_carrera'  => $idCarrera,
+                        'unidad' => $unidad,
+                        'id_carrera' => $idCarrera,
                         'id_ambiente' => $ambienteCodigo ? ($ambienteIds[$ambienteCodigo] ?? null) : null,
-                        'estado'      => 'VACANTE',
+                        'estado' => 'VACANTE',
                     ]
                 );
 
@@ -411,9 +419,9 @@ class DatabaseSeeder extends BaseSeeder
                 if (isset($itemIds[$numero])) {
                     Item::find($itemIds[$numero])->custodios()->syncWithoutDetaching([
                         $idUsuario => [
-                            'tipo'         => 'TITULAR',
+                            'tipo' => 'TITULAR',
                             'fecha_inicio' => '2026-01-01',
-                            'fecha_fin'    => null,
+                            'fecha_fin' => null,
                         ],
                     ]);
                 }
@@ -428,9 +436,9 @@ class DatabaseSeeder extends BaseSeeder
         }
 
         $this->command->info('✅ Base de datos poblada correctamente.');
-        $this->command->info('   Carreras: '  . count($carreraIds));
-        $this->command->info('   Usuarios: '  . count($personal));
-        $this->command->info('   Items: '     . count($itemIds));
-        $this->command->info('   Ambientes: ' . count($ambienteIds));
+        $this->command->info('   Carreras: '.count($carreraIds));
+        $this->command->info('   Usuarios: '.count($personal));
+        $this->command->info('   Items: '.count($itemIds));
+        $this->command->info('   Ambientes: '.count($ambienteIds));
     }
 }

@@ -234,6 +234,59 @@
     @endif
 
     {{-- ============================================================ --}}
+    {{-- ACCESOS RÁPIDOS Y RESUMEN ACADÉMICO --}}
+    {{-- ============================================================ --}}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin-bottom:25px;">
+        <a href="{{ route('activos.index') }}" class="sis-card" style="text-decoration:none;padding:20px;transition:transform .2s ease;">
+            <div style="font-size:25px;margin-bottom:8px;">📦</div>
+            <h2 class="sis-card-title">Gestionar activos</h2>
+            <p class="sis-card-sub">Consulta, registra y actualiza el inventario.</p>
+        </a>
+        <a href="{{ route('carreras.index') }}" class="sis-card" style="text-decoration:none;padding:20px;transition:transform .2s ease;">
+            <div style="font-size:25px;margin-bottom:8px;">🎓</div>
+            <h2 class="sis-card-title">Carreras y ambientes</h2>
+            <p class="sis-card-sub">{{ $totalCarreras ?? 0 }} carreras · {{ $totalAmbientes ?? 0 }} ambientes visibles.</p>
+        </a>
+        <a href="{{ route('categorias.index') }}" class="sis-card" style="text-decoration:none;padding:20px;transition:transform .2s ease;">
+            <div style="font-size:25px;margin-bottom:8px;">📁</div>
+            <h2 class="sis-card-title">Categorías</h2>
+            <p class="sis-card-sub">Organiza los activos por tipo y ubicación.</p>
+        </a>
+        <a href="{{ route('reportes.index') }}" class="sis-card" style="text-decoration:none;padding:20px;transition:transform .2s ease;">
+            <div style="font-size:25px;margin-bottom:8px;">📊</div>
+            <h2 class="sis-card-title">Reportes</h2>
+            <p class="sis-card-sub">Visualiza y descarga información del sistema.</p>
+        </a>
+    </div>
+
+    <div class="sis-grid-2-1" style="display:grid;grid-template-columns:1.2fr .8fr;gap:20px;margin-bottom:25px;">
+        <div class="sis-card">
+            <h2 class="sis-card-title">Activos por carrera</h2>
+            <p class="sis-card-sub" style="margin-bottom:16px;">Carreras con mayor cantidad de bienes registrados.</p>
+            <div style="display:flex;flex-direction:column;gap:9px;">
+                @forelse($activosPorCarrera ?? [] as $carrera)
+                    <a href="{{ route('carreras.show', $carrera->id_carrera) }}" class="sis-status-row">
+                        <span>{{ $carrera->nombre }}</span>
+                        <span class="sis-chip">{{ $carrera->total_activos }} activos</span>
+                    </a>
+                @empty
+                    <p class="sis-card-sub">No hay información disponible.</p>
+                @endforelse
+            </div>
+        </div>
+        <div class="sis-card">
+            <h2 class="sis-card-title">Resumen de alcance</h2>
+            <p class="sis-card-sub" style="margin-bottom:16px;">Información disponible para tu usuario.</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="sis-status-row" style="display:block;"><span class="sis-card-sub">Carreras</span><strong style="display:block;font-size:22px;">{{ $totalCarreras ?? 0 }}</strong></div>
+                <div class="sis-status-row" style="display:block;"><span class="sis-card-sub">Ambientes</span><strong style="display:block;font-size:22px;">{{ $totalAmbientes ?? 0 }}</strong></div>
+                <div class="sis-status-row" style="display:block;"><span class="sis-card-sub">Usuarios</span><strong style="display:block;font-size:22px;">{{ $totalUsuarios ?? 0 }}</strong></div>
+                <div class="sis-status-row" style="display:block;"><span class="sis-card-sub">Activos</span><strong style="display:block;font-size:22px;">{{ $totalActivos ?? 0 }}</strong></div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ============================================================ --}}
     {{-- SECCIÓN CENTRAL: GRÁFICA + ESTADOS --}}
     {{-- ============================================================ --}}
     <div class="sis-grid-2-1" style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 25px;">

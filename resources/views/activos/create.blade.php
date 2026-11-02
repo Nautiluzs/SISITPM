@@ -17,7 +17,7 @@
 
     {{-- ERRORES DEL SERVIDOR --}}
     @if ($errors->any())
-        <div style="background:#fee2e2;border:1px solid #fecaca;color:#991b1b;padding:14px 20px;border-radius:12px;margin:0 26px 20px 26px;font-size:13px;">
+        <div style="background:#fee2e2;border:1px solid #fecaca;color:#991b1b;padding:14px 20px;border-radius:12px;margin:20px 26px 0 26px;font-size:13px;">
             <strong>⚠️ Corrige los siguientes errores:</strong>
             <ul style="margin:8px 0 0 20px;">
                 @foreach ($errors->all() as $error)
@@ -32,11 +32,11 @@
 
         @if(request('id_categoria'))
             <input type="hidden" name="id_categoria_origen" value="{{ request('id_categoria') }}">
-        @endif>
+        @endif
 
         <style>
             .af-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-            .af-grid > div { display:flex; flex-direction:column; }
+            .af-grid div { display:flex; flex-direction:column; }
             .af-label { font-size:11px; font-weight:800; color:#475569; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px; }
             .af-input {
                 width:100%; padding:10px 14px; border-radius:10px; border:1.5px solid #e2e8f0; font-size:13px; font-weight:500; color:#0f172a;
@@ -62,6 +62,23 @@
             .btn-primary:hover { background:linear-gradient(135deg,#1d4ed8,#1e40af); box-shadow:0 8px 16px -4px rgba(37,99,235,0.5); transform:translateY(-1px); }
             .btn-primary:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
 
+            /* Select tipo_bien — que se vea claramente como dropdown */
+            #select-tipo-bien {
+                width:auto !important;
+                min-width:200px;
+                font-weight:800;
+                padding:10px 40px 10px 16px !important;
+                background:#ffffff url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e") no-repeat right 12px center / 14px !important;
+                appearance:none;
+                -webkit-appearance:none;
+                -moz-appearance:none;
+                cursor:pointer;
+                border:2px solid #2563eb !important;
+                color:#1d4ed8;
+            }
+            #select-tipo-bien:hover { background-color:#eff6ff !important; }
+            #select-tipo-bien:focus { box-shadow:0 0 0 4px rgba(37,99,235,0.2) !important; }
+
             /* Custodio selector */
             .custodio-wrapper {
                 border:1.5px solid #e2e8f0; border-radius:12px; overflow:hidden; background:#ffffff;
@@ -85,17 +102,46 @@
             .custodio-list option:hover { background:#eff6ff; }
             .custodio-list option:checked { background:#2563eb; color:white; }
             .custodio-list option:checked::before { content:'✓ '; font-weight:900; }
+
+            /* ⭐ RV Selector (mismo estilo del modal) */
+            .af-grid .rv-box {
+                display:flex !important;
+                flex-direction:row !important;
+                align-items:center;
+                gap:16px;
+                padding:12px 16px;
+                background:#f0fdf4;
+                border:1.5px solid #bbf7d0;
+                border-radius:12px;
+                flex-wrap:wrap;
+            }
+            .rv-label-title { font-size:13px; font-weight:800; color:#166534; }
+            .rv-option {
+                display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; font-weight:800;
+                padding:6px 14px; border-radius:8px; border:2px solid transparent; transition:all 0.15s;
+                flex-direction:row !important;
+            }
+            .rv-option input { width:16px; height:16px; cursor:pointer; margin:0; }
+            .rv-option.si { color:#166534; }
+            .rv-option.si:hover { background:#dcfce7; }
+            .rv-option.no { color:#991b1b; }
+            .rv-option.no:hover { background:#fee2e2; }
+            .rv-option.si.selected { background:#dcfce7; border-color:#16a34a; }
+            .rv-option.no.selected { background:#fee2e2; border-color:#dc2626; }
+            .rv-hint { font-size:10px; color:#64748b; font-weight:600; margin-left:auto; }
         </style>
 
         <div class="af-grid">
 
             {{-- Clasificación --}}
-            <div class="af-span-2 af-box" style="display:flex; align-items:center; justify-content:space-between; border-left:4px solid #2563eb; background:linear-gradient(90deg,#eff6ff,#ffffff);">
-                <div>
+            <div class="af-span-2 af-box" style="display:flex; align-items:center; justify-content:space-between; gap:16px; border-left:4px solid #2563eb; background:linear-gradient(90deg,#eff6ff,#ffffff);">
+                <div style="flex:1;">
                     <strong style="font-size:13px; color:#0f172a; display:block; font-weight:800;">🏷️ Clasificación del bien</strong>
-                    <span id="aviso-serie" style="font-size:11px; color:#64748b; font-weight:500;">Activo Fijo: marca, modelo, serie y 3 fotos obligatorias.</span>
+                    <span id="aviso-serie" style="font-size:11px; color:#64748b; font-weight:500;">
+                        Activo Fijo / RV: marca, modelo, serie y 3 fotos obligatorias. No Activo: solo foto frontal.
+                    </span>
                 </div>
-                <select name="tipo_bien" id="select-tipo-bien" onchange="aplicarTipoBien(this.value)" class="af-input" style="width:auto; font-weight:800; padding:9px 16px; background:white;">
+                <select name="tipo_bien" id="select-tipo-bien" onchange="aplicarTipoBien(this.value)">
                     @php $tipoInicial = old('tipo_bien', 'ACTIVO_FIJO'); @endphp
                     <option value="ACTIVO_FIJO" {{ $tipoInicial === 'ACTIVO_FIJO' ? 'selected' : '' }}>🔹 Activo Fijo</option>
                     <option value="NO_ACTIVO" {{ $tipoInicial === 'NO_ACTIVO' ? 'selected' : '' }}>🔸 No Activo</option>
@@ -112,7 +158,7 @@
 
             <div>
                 <label class="af-label">Categoría (Ambiente) <span class="af-asterisco visible">*</span></label>
-                <select name="id_categoria" id="id_categoria" onchange="filtrarCategoriasPorAmbiente(this.value)" class="af-input">
+                <select name="id_categoria" id="id_categoria" class="af-input">
                     <option value="">— Seleccione categoría del ambiente —</option>
                     @foreach ($categorias as $item)
                         <option value="{{ $item->id_categoria }}" data-ambiente="{{ $item->id_ambiente }}"
@@ -127,7 +173,8 @@
             {{-- Ambiente --}}
             <div>
                 <label class="af-label">Ambiente <span class="af-asterisco visible">*</span></label>
-                <select name="id_ambiente" id="id_ambiente" class="af-input">
+                <select name="id_ambiente" id="id_ambiente" class="af-input"
+                        onchange="filtrarCategoriasPorAmbiente(this.value)">
                     <option value="">— Seleccione ambiente —</option>
                     @foreach ($ambientes as $item)
                         <option value="{{ $item->id_ambiente }}"
@@ -139,46 +186,54 @@
                 <div class="af-error" data-for="id_ambiente"></div>
             </div>
 
-            {{-- Cantidad & Fecha --}}
+            {{-- Cantidad --}}
             <div>
                 <label class="af-label">Cantidad <span class="af-asterisco visible">*</span></label>
                 <input type="number" name="cantidad" id="cantidad" min="1" max="100" value="{{ old('cantidad', 1) }}" class="af-input">
                 <div class="af-error" data-for="cantidad"></div>
             </div>
 
+            {{-- Fecha --}}
             <div>
                 <label class="af-label">Fecha Adquisición <span class="af-asterisco visible">*</span></label>
                 <input type="date" name="fecha_adquisicion" id="fecha_adquisicion" value="{{ old('fecha_adquisicion', date('Y-m-d')) }}" class="af-input">
                 <div class="af-error" data-for="fecha_adquisicion"></div>
             </div>
 
+            {{-- Valor (pareja de Fecha) --}}
+            <div>
+                <label class="af-label">Valor Adquisición (Bs.) <span class="af-asterisco visible">*</span></label>
+                <input type="number" name="valor_adquisicion" id="valor_adquisicion" step="0.01" min="0" value="{{ old('valor_adquisicion', 0) }}" class="af-input">
+                <div class="af-error" data-for="valor_adquisicion"></div>
+            </div>
+
             {{-- Nombre --}}
             <div class="af-span-2">
                 <label class="af-label">Nombre del activo <span class="af-asterisco visible">*</span></label>
-                <input type="text" name="nombre" id="nombre" maxlength="150" placeholder="Ej: Laptop Dell Latitude 5430" class="af-input">
+                <input type="text" name="nombre" id="nombre" maxlength="150" value="{{ old('nombre') }}" placeholder="Ej: Laptop Dell Latitude 5430" class="af-input">
                 <div class="af-error" data-for="nombre"></div>
             </div>
 
             {{-- Marca, Modelo, Serie --}}
             <div>
                 <label class="af-label" id="lbl-marca">Marca <span class="af-asterisco" id="req-marca">*</span></label>
-                <input type="text" name="marca" id="marca" maxlength="80" placeholder="Ej. Dell, HP, Samsung" class="af-input">
+                <input type="text" name="marca" id="marca" maxlength="80" value="{{ old('marca') }}" placeholder="Ej. Dell, HP, Samsung" class="af-input">
                 <div class="af-error" data-for="marca"></div>
             </div>
 
             <div>
                 <label class="af-label" id="lbl-modelo">Modelo <span class="af-asterisco" id="req-modelo">*</span></label>
-                <input type="text" name="modelo" id="modelo" maxlength="80" placeholder="Ej. Latitude 3420" class="af-input">
+                <input type="text" name="modelo" id="modelo" maxlength="80" value="{{ old('modelo') }}" placeholder="Ej. Latitude 3420" class="af-input">
                 <div class="af-error" data-for="modelo"></div>
             </div>
 
             <div class="af-span-2">
                 <label class="af-label" id="lbl-serie">N° Serie <span class="af-asterisco" id="req-serie">*</span></label>
-                <input type="text" name="numero_serie" id="numero_serie" maxlength="80" placeholder="Ej. SN-9876543210" class="af-input">
+                <input type="text" name="numero_serie" id="numero_serie" maxlength="80" value="{{ old('numero_serie') }}" placeholder="Ej. SN-9876543210" class="af-input">
                 <div class="af-error" data-for="numero_serie"></div>
             </div>
 
-            {{-- Fuente, Estado, Valor --}}
+            {{-- Fuente & Estado --}}
             <div>
                 <label class="af-label">Fuente de financiamiento <span class="af-asterisco visible">*</span></label>
                 <select name="id_fuente" id="id_fuente" class="af-input">
@@ -203,10 +258,20 @@
                 <div class="af-error" data-for="estado_fisico"></div>
             </div>
 
+            {{-- ⭐ RV (Revaluo) — mismo estilo del modal, ANTES de Custodio --}}
             <div class="af-span-2">
-                <label class="af-label">Valor Adquisición (Bs.) <span class="af-asterisco visible">*</span></label>
-                <input type="number" name="valor_adquisicion" id="valor_adquisicion" step="0.01" min="0" value="{{ old('valor_adquisicion', 0) }}" class="af-input">
-                <div class="af-error" data-for="valor_adquisicion"></div>
+                <div class="rv-box">
+                    <span class="rv-label-title">🔖 RV:</span>
+                    <label class="rv-option si {{ old('rv') === 'SI' ? 'selected' : '' }}" id="rv-si-label" onclick="setRv('SI')">
+                        <input type="radio" name="rv" value="SI" id="rv-si" {{ old('rv') === 'SI' ? 'checked' : '' }}>
+                        Sí
+                    </label>
+                    <label class="rv-option no {{ (old('rv') ?? 'NO') === 'NO' ? 'selected' : '' }}" id="rv-no-label" onclick="setRv('NO')">
+                        <input type="radio" name="rv" value="NO" id="rv-no" {{ (old('rv') ?? 'NO') === 'NO' ? 'checked' : '' }}>
+                        No
+                    </label>
+                    <span class="rv-hint">Aplica para Activo Fijo y No Activo</span>
+                </div>
             </div>
 
             {{-- ⭐ CUSTODIO RESPONSABLE --}}
@@ -222,10 +287,11 @@
                         <option value="">— Seleccione custodio de la lista —</option>
                         @foreach ($usuarios as $usr)
                             @php
-                                $itemActivo = $usr->items->first();
-                                $nroItem = $itemActivo ? 'Ítem #' . $itemActivo->numero_item : 'Sin ítem';
-                                $textoMostrar = "{$nroItem} · C.I.: {$usr->ci} · {$usr->nombre_completo}";
-                                $textoBusqueda = strtolower($nroItem . ' ' . $usr->ci . ' ' . $usr->nombre_completo);
+                                $items = $usr->items->pluck('numero_item');
+                                $nroItem = $items->isNotEmpty() ? 'Ítems #' . $items->implode(', #') : 'Sin ítem';
+                                $rol = \App\Models\User::ROLES[$usr->rol] ?? $usr->rol;
+                                $textoMostrar = "{$nroItem} · C.I.: {$usr->ci} · {$usr->nombre_completo} · {$rol}";
+                                $textoBusqueda = strtolower($nroItem . ' ' . $usr->ci . ' ' . $usr->nombre_completo . ' ' . $rol);
                             @endphp
                             <option value="{{ $usr->id_usuario }}" data-busqueda="{{ $textoBusqueda }}" {{ old('id_custodio') == $usr->id_usuario ? 'selected' : '' }}>
                                 {{ $textoMostrar }}
@@ -242,7 +308,7 @@
             {{-- Descripción --}}
             <div class="af-span-2">
                 <label class="af-label">Descripción / Características técnicas <span class="af-asterisco visible">*</span></label>
-                <textarea name="descripcion" id="descripcion" rows="3" class="af-input" style="resize:none;"></textarea>
+                <textarea name="descripcion" id="descripcion" rows="3" class="af-input" style="resize:none;">{{ old('descripcion') }}</textarea>
                 <div class="af-error" data-for="descripcion"></div>
             </div>
 
@@ -268,7 +334,7 @@
 
                     {{-- Lateral --}}
                     <div id="bloque-lateral">
-                        <label class="af-label" style="font-size:10px;">Foto Lateral <span class="af-asterisco visible" id="req-lateral">*</span></label>
+                        <label class="af-label" style="font-size:10px;">Foto Lateral <span class="af-asterisco" id="req-lateral">*</span></label>
                         <div class="af-dropzone" id="preview-lateral">
                             <span style="font-size:24px; color:#94a3b8;">🖼️</span>
                             <span style="color:#94a3b8; font-size:11px; margin-top:4px; font-weight:600;">Vista lateral</span>
@@ -279,7 +345,7 @@
 
                     {{-- Detalle --}}
                     <div id="bloque-detalle">
-                        <label class="af-label" style="font-size:10px;">Foto Detalle <span class="af-asterisco visible" id="req-detalle">*</span></label>
+                        <label class="af-label" style="font-size:10px;">Foto Detalle <span class="af-asterisco" id="req-detalle">*</span></label>
                         <div class="af-dropzone" id="preview-detalle">
                             <span style="font-size:24px; color:#94a3b8;">🏷️</span>
                             <span style="color:#94a3b8; font-size:11px; margin-top:4px; font-weight:600;">Placa / Serial</span>
@@ -302,19 +368,41 @@
 
 <script>
     // ============================================
+    // ⭐ RV — Selector Sí / No (estilo modal)
+    // ============================================
+    function setRv(valor) {
+        const si = document.getElementById('rv-si');
+        const no = document.getElementById('rv-no');
+        const lblSi = document.getElementById('rv-si-label');
+        const lblNo = document.getElementById('rv-no-label');
+        if (si) si.checked = (valor === 'SI');
+        if (no) no.checked = (valor === 'NO');
+        if (lblSi) lblSi.classList.toggle('selected', valor === 'SI');
+        if (lblNo) lblNo.classList.toggle('selected', valor === 'NO');
+    }
+
+    // ============================================
     // FILTRAR CATEGORÍAS POR AMBIENTE
     // ============================================
-    function filtrarCategoriasPorAmbiente(ambienteId) {
+    function filtrarCategoriasPorAmbiente(ambienteId, mantenerSeleccion = false) {
         const selectCat = document.getElementById('id_categoria');
         if (!selectCat) return;
+        const valorActual = mantenerSeleccion ? selectCat.value : "";
         const opciones = selectCat.querySelectorAll('option');
 
-        selectCat.value = "";
         opciones.forEach(opt => {
             if (opt.value === "") { opt.style.display = "block"; return; }
             const ambOpt = opt.getAttribute('data-ambiente');
-            opt.style.display = (!ambienteId || ambOpt === ambienteId) ? "block" : "none";
+            const visible = (!ambienteId || ambOpt === ambienteId);
+            opt.style.display = visible ? "block" : "none";
+            if (!visible && opt.selected) opt.selected = false;
         });
+
+        if (mantenerSeleccion && valorActual) {
+            selectCat.value = valorActual;
+        } else {
+            selectCat.value = "";
+        }
     }
 
     // ============================================
@@ -324,9 +412,7 @@
         const filtro = texto.toLowerCase().trim();
         const selectCustodio = document.getElementById('id_custodio');
         if (!selectCustodio) return;
-        const opciones = selectCustodio.querySelectorAll('option');
-
-        opciones.forEach(opt => {
+        selectCustodio.querySelectorAll('option').forEach(opt => {
             if (opt.value === "") return;
             const busqueda = opt.getAttribute('data-busqueda') || "";
             opt.style.display = busqueda.includes(filtro) ? "block" : "none";
@@ -355,10 +441,7 @@
     // ============================================
     function limpiarError(campo) {
         const span = document.querySelector('.af-error[data-for="' + campo.id + '"]');
-        if (span) {
-            span.classList.remove('visible');
-            span.textContent = '';
-        }
+        if (span) { span.classList.remove('visible'); span.textContent = ''; }
         campo.classList.remove('af-input-error');
     }
 
@@ -369,20 +452,31 @@
     });
 
     // ============================================
-    // TIPO DE BIEN — Dinámico
+    // TIPO DE BIEN — Dinámico (FIJO / NO_ACTIVO / RV)
     // ============================================
     function aplicarTipoBien(tipo) {
-        const esFijo = tipo === 'ACTIVO_FIJO';
+        const esFijo = (tipo === 'ACTIVO_FIJO' || tipo === 'RV');
+        const esRV   = (tipo === 'RV');
 
         const aviso = document.getElementById('aviso-serie');
-        if (aviso) aviso.style.display = esFijo ? '' : 'block';
-        if (aviso && esFijo) aviso.style.display = 'none';
+        if (aviso) {
+            if (esRV) {
+                aviso.textContent = '🔄 RV (Revalúo): marca, modelo, serie y 3 fotos obligatorias.';
+            } else if (esFijo) {
+                aviso.textContent = 'Activo Fijo: marca, modelo, serie y 3 fotos obligatorias.';
+            } else {
+                aviso.textContent = 'No Activo: solo foto frontal obligatoria.';
+            }
+        }
 
         ['req-marca','req-modelo','req-serie'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.classList.toggle('visible', esFijo);
         });
-        ['req-frontal','req-lateral','req-detalle'].forEach(id => {
+
+        const reqFrontal = document.getElementById('req-frontal');
+        if (reqFrontal) reqFrontal.classList.add('visible');
+        ['req-lateral','req-detalle'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.classList.toggle('visible', esFijo);
         });
@@ -395,7 +489,7 @@
         if (!esFijo) {
             ['marca','modelo','numero_serie'].forEach(id => {
                 const campo = document.getElementById(id);
-                if (campo) limpiarError(campo);
+                if (campo) { campo.value = ''; limpiarError(campo); }
             });
             ['imagen_lateral','imagen_detalle'].forEach(id => {
                 const campo = document.getElementById(id);
@@ -413,8 +507,23 @@
         aplicarTipoBien(this.value);
     });
 
+    // ============================================
+    // INICIALIZACIÓN
+    // ============================================
     (function() {
-        aplicarTipoBien(document.getElementById('select-tipo-bien').value);
+        const selectBien = document.getElementById('select-tipo-bien');
+        if (selectBien) aplicarTipoBien(selectBien.value);
+
+        const ambiente = document.getElementById('id_ambiente');
+        if (ambiente && ambiente.value) {
+            filtrarCategoriasPorAmbiente(ambiente.value, true);
+        }
+
+        // ⭐ Asegurar que el RV tenga el estado visual correcto al cargar
+        const rvSi = document.getElementById('rv-si');
+        const rvNo = document.getElementById('rv-no');
+        if (rvSi && rvSi.checked) setRv('SI');
+        else if (rvNo && rvNo.checked) setRv('NO');
     })();
 
     // ============================================
@@ -424,8 +533,7 @@
         let hayErrores = false;
 
         document.querySelectorAll('#activo-form .af-error').forEach(el => {
-            el.classList.remove('visible');
-            el.textContent = '';
+            el.classList.remove('visible'); el.textContent = '';
         });
         document.querySelectorAll('#activo-form .af-input-error').forEach(el => {
             el.classList.remove('af-input-error');
@@ -434,18 +542,15 @@
         function marcar(campoId, mensaje) {
             const campo = document.getElementById(campoId);
             const span = document.querySelector('.af-error[data-for="' + campoId + '"]');
-            if (span) {
-                span.textContent = '⚠️ ' + mensaje;
-                span.classList.add('visible');
-            }
+            if (span) { span.textContent = '⚠️ ' + mensaje; span.classList.add('visible'); }
             if (campo) campo.classList.add('af-input-error');
             hayErrores = true;
         }
 
         const tipo = document.getElementById('select-tipo-bien')?.value || 'ACTIVO_FIJO';
-        const esFijo = tipo === 'ACTIVO_FIJO';
+        const esFijo = (tipo === 'ACTIVO_FIJO' || tipo === 'RV');
 
-        const requeridosBase = [
+        [
             { id: 'codigo_activo', msg: 'El código es obligatorio.' },
             { id: 'cantidad', msg: 'La cantidad es obligatoria.' },
             { id: 'nombre', msg: 'El nombre es obligatorio.' },
@@ -457,13 +562,16 @@
             { id: 'fecha_adquisicion', msg: 'La fecha de adquisición es obligatoria.' },
             { id: 'valor_adquisicion', msg: 'El valor es obligatorio.' },
             { id: 'descripcion', msg: 'La descripción es obligatoria.' },
-        ];
-
-        requeridosBase.forEach(({ id, msg }) => {
+        ].forEach(({ id, msg }) => {
             const campo = document.getElementById(id);
             if (!campo) return;
             if ((campo.value || '').trim() === '') marcar(id, msg);
         });
+
+        const img = document.getElementById('imagen');
+        if (img && (!img.files || img.files.length === 0)) {
+            marcar('imagen', 'La foto frontal es obligatoria.');
+        }
 
         if (esFijo) {
             ['marca','modelo','numero_serie'].forEach(id => {
@@ -471,13 +579,17 @@
                 if (!campo) return;
                 if ((campo.value || '').trim() === '') {
                     const nombre = id === 'numero_serie' ? 'N° de serie' : id.charAt(0).toUpperCase() + id.slice(1);
-                    marcar(id, 'La ' + nombre + ' es obligatoria para Activo Fijo.');
+                    marcar(id, 'La ' + nombre + ' es obligatoria.');
                 }
             });
 
-            const img = document.getElementById('imagen');
-            if (!img.files || img.files.length === 0) {
-                marcar('imagen', 'La foto frontal es obligatoria para Activo Fijo.');
+            const imgLat = document.getElementById('imagen_lateral');
+            if (imgLat && (!imgLat.files || imgLat.files.length === 0)) {
+                marcar('imagen_lateral', 'La foto lateral es obligatoria.');
+            }
+            const imgDet = document.getElementById('imagen_detalle');
+            if (imgDet && (!imgDet.files || imgDet.files.length === 0)) {
+                marcar('imagen_detalle', 'La foto de detalle es obligatoria.');
             }
         }
 

@@ -2,425 +2,474 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Acta de Entrega y Recepción</title>
+    <title>Acta de Entrega y Recepción — {{ $activo->codigo_activo }}</title>
+    @php
+        use Illuminate\Support\Facades\DB;
+        use App\Models\User;
+        if (!isset($responsables)) {
+            $responsables = collect();
+            $ambienteId = $activo->id_ambiente ?? null;
+            if ($activo->item && !$ambienteId) {
+                $ambienteId = $activo->item->id_ambiente ?? null;
+            }
+
+            if ($ambienteId) {
+                $rows = DB::table('ambiente_user')
+                    ->join('usuarios', 'usuarios.id_usuario', '=', 'ambiente_user.id_usuario')
+                    ->where('ambiente_user.id_ambiente', $ambienteId)
+                    ->where('usuarios.estado', 'ACTIVO')
+                    ->orderBy('usuarios.nombre_completo')
+                    ->select('usuarios.id_usuario', 'usuarios.nombre_completo', 'usuarios.ci', 'usuarios.cargo', 'usuarios.rol', 'usuarios.estado')
+                    ->distinct()
+                    ->get();
+                foreach ($rows as $row) {
+                    $u = new User((array)$row);
+                    $u->exists = true;
+                    $responsables->push($u);
+                }
+            }
+
+            if ($responsables->isEmpty() && $activo->id_item) {
+                $rows = DB::table('item_usuario')
+                    ->join('usuarios', 'usuarios.id_usuario', '=', 'item_usuario.id_usuario')
+                    ->where('item_usuario.id_item', $activo->id_item)
+                    ->whereNull('item_usuario.fecha_fin')
+                    ->where('usuarios.estado', 'ACTIVO')
+                    ->select('usuarios.id_usuario', 'usuarios.nombre_completo', 'usuarios.ci', 'usuarios.cargo', 'usuarios.rol', 'usuarios.estado', 'item_usuario.tipo')
+                    ->orderByRaw("FIELD(item_usuario.tipo, 'TITULAR', 'RESPONSABLE', 'SECUNDARIO')")
+                    ->orderBy('usuarios.nombre_completo')
+                    ->get();
+                foreach ($rows as $row) {
+                    $u = new User((array)$row);
+                    $u->exists = true;
+                    $responsables->push($u);
+                }
+            }
+
+            if ($responsables->isEmpty() && $activo->custodio) {
+                $responsables = collect([$activo->custodio]);
+            }
+        }
+    @endphp
     <style>
-        @page { size: 216mm 330mm; margin: 12mm 10mm; }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Helvetica, Arial, sans-serif; font-size: 9px; color: #000; line-height: 1.3; }
-
-        /* ============ ENCABEZADO CON LOGO ============ */
-        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-        .header-table td { vertical-align: middle; }
-        .logo-cell {
-            width: 80px;
-            text-align: center;
-        }
-        .logo-img {
-            width: 70px;
-            height: 70px;
-            object-fit: contain;
-        }
-        .header-center {
-            text-align: center;
-        }
-        .title-main {
-            font-weight: bold;
-            font-size: 12px;
-            text-transform: uppercase;
-        }
-        .title-sub {
-            font-size: 9px;
-            margin-top: 2px;
-        }
-        .title-acta {
-            font-weight: bold;
-            font-size: 10px;
-            margin-top: 4px;
-            text-transform: uppercase;
-        }
-        .fecha-acta {
-            font-size: 8px;
-            font-weight: bold;
-            margin-top: 2px;
-        }
-        .box-right {
-            border: 1px solid #000;
-            padding: 4px 6px;
-            text-align: center;
-            font-size: 8px;
-            font-weight: bold;
-            width: 110px;
+        /* ============ HOJA CARTA HORIZONTAL CON MÁRGENES AMPLIOS DE 2CM ============ */
+        @page {
+            size: letter landscape;
+            margin: 12mm 12mm;
         }
 
-        /* ============ TEXTO LEGAL ============ */
-        .legal-text {
-            font-size: 8px;
-            text-align: justify;
-            margin: 8px 0;
-            border: 1px solid #000;
-            padding: 5px;
-            background: #fcfcfc;
-            line-height: 1.4;
-        }
+        * { box-sizing: border-box; margin: 0.5%; padding: 0; }
 
-        /* ============ TABLA DE INFO ============ */
-        .info-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 8px;
-        }
-        .info-table th,
-        .info-table td {
-            border: 1px solid #000;
-            padding: 4px 6px;
-            font-size: 8px;
-            text-align: left;
-        }
-        .info-table th {
-            background-color: #f2f2f2;
-            width: 22%;
-            font-weight: bold;
-        }
-
-        /* ============ TABLA PRINCIPAL DE ACTIVOS ============ */
-        .grid-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 8px;
-        }
-        .grid-table th,
-        .grid-table td {
-            border: 1px solid #000;
-            padding: 4px;
-            text-align: center;
-            font-size: 7px;
-            vertical-align: middle;
-        }
-        .grid-table th {
-            background-color: #e5e7eb;
-            font-weight: bold;
-            text-transform: uppercase;
-            font-size: 7px;
-        }
-        .grid-table td.descripcion {
-            text-align: left;
-            padding: 5px 6px;
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11px;
+            color: #000;
             line-height: 1.35;
+            background: #fff;
         }
 
-        /* ============ FOTOS EN GRID ============ */
-        .fotos-grid {
-            display: table;
+        .page-container {
             width: 100%;
-            border-collapse: collapse;
-        }
-        .foto-item {
-            display: table-cell;
-            width: 33.33%;
-            padding: 2px;
-            text-align: center;
-            vertical-align: middle;
-        }
-        .foto-img {
-            width: 55px;
-            height: 55px;
-            object-fit: cover;
-            border: 1px solid #999;
-            border-radius: 3px;
-            display: block;
             margin: 0 auto;
         }
-        .foto-label {
-            font-size: 6px;
-            color: #666;
-            margin-top: 1px;
-            text-transform: uppercase;
-            font-weight: bold;
-        }
-        .foto-vacia {
-            font-size: 6px;
-            color: #888;
-            font-style: italic;
-        }
 
-        /* ============ OBSERVACIONES ============ */
-        .obs-table {
+        /* ============ ENCABEZADO INSTITUCIONAL ============ */
+        .header-table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 8px;
         }
-        .obs-table th,
-        .obs-table td {
-            border: 1px solid #000;
-            padding: 5px 6px;
-            font-size: 8px;
-            text-align: left;
-            vertical-align: top;
+        .header-table td {
+            vertical-align: middle;
         }
-        .obs-table th {
-            background-color: #f2f2f2;
-            width: 15%;
+        .logo-box {
+            width: 60px;
+            height: 45px;
+            text-align: center;
+            font-size: 24px;
+        }
+        .titulo-instituto {
+            text-align: center;
+        }
+        .titulo-instituto h2 {
+            font-size: 13.5px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 2px;
+        }
+        .titulo-instituto h3 {
+            font-size: 11.5px;
+            font-weight: normal;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        .titulo-instituto .acta-sub {
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-bottom: 1.5px solid #000;
+            display: inline-block;
+            padding-bottom: 1px;
+            margin-bottom: 2px;
+        }
+        .titulo-instituto .fecha-acta {
+            font-size: 10.5px;
             font-weight: bold;
         }
 
-        /* ============ FIRMAS ============ */
-        .signatures-table {
+        .cajas-derecha {
+            width: 170px;
+            text-align: right;
+            vertical-align: top;
+        }
+        .caja-form, .caja-hoja {
+            border: 1.5px solid #000;
+            padding: 4px 8px;
+            font-size: 9.5px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 3px;
+            background: #fff;
+        }
+
+        /* ============ TEXTO INFORMATIVO ============ */
+        .info-cumplimiento {
+            border: 1px solid #000;
+            padding: 5px 8px;
+            font-size: 10px;
+            margin-bottom: 8px;
+            text-align: justify;
+            background: #fff;
+        }
+
+        /* ============ TABLA PRINCIPAL DE ÍTEMS ============ */
+        table.tabla-principal {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 30px;
+            margin-bottom: 8px;
+            font-size: 11px;
         }
-        .signatures-table td {
-            width: 50%;
-            padding: 8px;
+        table.tabla-principal th, table.tabla-principal td {
+            border: 1px solid #000;
+            padding: 5px 7px;
             vertical-align: top;
-            height: 90px;
+        }
+        table.tabla-principal th {
+            background: #f1f1f1;
             text-align: center;
-        }
-        .firma-linea {
-            border-top: 1px solid #000;
-            padding-top: 4px;
-            font-size: 8px;
+            font-size: 10px;
             font-weight: bold;
-            line-height: 1.4;
+            text-transform: uppercase;
         }
-        .firma-detalle {
-            font-weight: normal;
-            font-size: 7px;
+        .col-item { width: 45px; text-align: center; }
+        .col-codigo { width: 110px; text-align: center; }
+        .col-fuente { width: 70px; text-align: center; }
+        .col-est { width: 45px; text-align: center; }
+        .col-cant { width: 50px; text-align: center; }
+        .col-transferencia { width: 95px; text-align: center; }
+
+        /* ============ CONTENEDOR DE LAS 3 IMÁGENES ============ */
+        .imagenes-row {
+            margin-top: 6px;
+            text-align: center;
+            width: 100%;
+        }
+        .img-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .img-table td {
+            border: 1px dashed #666;
+            padding: 3px;
+            text-align: center;
+            width: 33.33%;
+            background: #fafafa;
+        }
+        .img-box {
+            width: 100%;
+            height: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .img-box img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .img-label {
+            font-size: 8.5px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-top: 2px;
             color: #333;
         }
 
-        /* ============ NOTA FINAL ============ */
-        .footer-note {
-            font-size: 7px;
-            margin-top: 12px;
-            text-align: justify;
-            line-height: 1.4;
-            border-top: 1px solid #ccc;
-            padding-top: 6px;
+        /* ============ ÍTEMS ASIGNADOS ============ */
+        .tabla-asignados {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 8px;
+            font-size: 11px;
         }
-        .footer-note strong {
+        .tabla-asignados td {
+            border: 1px solid #000;
+            padding: 4px 8px;
+        }
+
+        /* ============ BLOQUE DE FIRMAS ============ */
+        .tabla-firmas {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 6px;
+        }
+        .tabla-firmas td {
+            border: 1px solid #000;
+            vertical-align: top;
+            padding: 5px;
+            width: 50%;
+        }
+        .espacio-firma {
+            height: 40px;
+        }
+        .linea-firma {
+            border-top: 1px solid #000;
+            text-align: center;
+            padding-top: 2px;
+            font-size: 10px;
             font-weight: bold;
+        }
+        .cargo-firma {
+            text-align: center;
+            font-size: 9px;
+            color: #333;
+        }
+
+        /* ============ UNIDADES Y OBSERVACIONES ============ */
+        .tabla-unidades {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 6px;
+            font-size: 10px;
+        }
+        .tabla-unidades td {
+            border: 1px solid #000;
+            padding: 4px 7px;
+            font-weight: bold;
+        }
+
+        .tabla-obs {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 2px;
+            font-size: 9.5px;
+        }
+        .tabla-obs td {
+            border: 1px solid #000;
+            padding: 4px 7px;
+            vertical-align: top;
+        }
+
+        /* ============ TEXTO LEGAL INFERIOR (MÁS GRANDE Y CLARO) ============ */
+        .texto-legal {
+            font-size: 11px;
+            margin-top: 6px;
+            text-align: justify;
+            line-height: 1.35;
         }
     </style>
 </head>
 <body>
 
-    {{-- ============================================================ --}}
-    {{-- ENCABEZADO CON LOGO --}}
-    {{-- ============================================================ --}}
+<div class="page-container">
+
+    {{-- ENCABEZADO --}}
     <table class="header-table">
         <tr>
-            {{-- LOGO INSTITUCIONAL --}}
-            <td class="logo-cell">
-                @if(file_exists(public_path('logo.png')))
-                    <img class="logo-img" src="{{ public_path('logo.png') }}" alt="Logo">
-                @elseif(file_exists(public_path('images/logo.png')))
-                    <img class="logo-img" src="{{ public_path('images/logo.png') }}" alt="Logo">
+            <td class="logo-box">
+                @if(file_exists(public_path('images/logo.png')))
+                    <img src="{{ public_path('images/logo.png') }}" alt="Logo" style="max-height: 80px; max-width: 50px;">
                 @else
-                    <div style="font-size: 7px; color: #999;">[LOGO]</div>
+                    🏛️
                 @endif
             </td>
-
-            {{-- TÍTULO CENTRAL --}}
-            <td class="header-center">
-                <div class="title-main">Instituto Tecnológico "Puerto de Mejillones"</div>
-                <div class="title-sub">DIRECCIÓN ADMINISTRATIVA</div>
-                <div class="title-acta">ACTA DE ENTREGA Y RECEPCIÓN</div>
+            <td class="titulo-instituto">
+                <h2>INSTITUTO TECNOLÓGICO "PUERTO DE MEJILLONES"</h2>
+                <h3>DIRECCIÓN ADMINISTRATIVA</h3>
+                <div class="acta-sub">ACTA DE ENTREGA Y RECEPCIÓN</div>
                 <div class="fecha-acta">{{ now()->translatedFormat('d \d\e F \d\e Y') }}</div>
             </td>
-
-            {{-- CAJA FORMULARIO --}}
-            <td style="width: 110px; text-align: right; vertical-align: top;">
-                <div class="box-right">
-                    FORMULARIO N° 1<br>
-                    <span style="font-weight: normal; font-size: 7px;">HOJA N° 1 de 1</span>
-                </div>
+            <td class="cajas-derecha">
+                <div class="caja-form">FORMULARIO N° 1</div>
+                <div class="caja-hoja">HOJA N° 1 de 1</div>
             </td>
         </tr>
     </table>
 
-    {{-- ============================================================ --}}
-    {{-- TEXTO LEGAL --}}
-    {{-- ============================================================ --}}
-    <div class="legal-text">
-        En cumplimiento al D.S. 0181 Normas Básicas del Sistema de Administración de Bienes y Servicios en su Art. 146, 147, 157
-        (Asignación de Activos Fijos Muebles), la Dirección Administrativa del Instituto Tecnológico "Puerto de Mejillones",
-        procedió a la verificación y asignación de los siguientes activos.
+    {{-- TEXTO DE CUMPLIMIENTO --}}
+    <div class="info-cumplimiento">
+        En cumplimiento al D.S. 0181 Normas Básicas del Sistema de Bienes y Servicios en su Art. 146, 147, 157 (Asignación de Activos Fijos Muebles), la sección de Activos Fijos del Instituto Tecnológico "Puerto de Mejillones", procedió a la verificación y asignación de los siguientes activos:
     </div>
 
-    {{-- ============================================================ --}}
-    {{-- DATOS DEL CUSTODIO --}}
-    {{-- ============================================================ --}}
-    @php $first = $activos->first(); @endphp
-    <table class="info-table">
-        <tr>
-            <th>NOMBRE DEL CUSTODIO:</th>
-            <td>{{ $first?->custodioActual?->nombre_completo ?? 'N/A' }}</td>
-            <th>C.I.:</th>
-            <td>{{ $first?->custodioActual?->ci ?? 'N/A' }}</td>
-        </tr>
-        <tr>
-            <th>CARGO:</th>
-            <td>{{ $first?->custodioActual?->cargo ?? 'N/A' }}</td>
-            <th>UNIDAD ORGANIZACIONAL:</th>
-            <td>{{ $first?->custodioActual?->unidad_organizacional ?? $first?->custodioActual?->unidad ?? 'N/A' }}</td>
-        </tr>
-        <tr>
-            <th>UBICACIÓN / AMBIENTE:</th>
-            <td>{{ $first?->ambiente?->nombre ?? 'N/A' }}</td>
-            <th>CARRERA:</th>
-            <td>{{ $first?->ambiente?->carrera?->nombre ?? 'N/A' }}</td>
-        </tr>
-    </table>
-
-    {{-- ============================================================ --}}
     {{-- TABLA PRINCIPAL DE ACTIVOS --}}
-    {{-- ============================================================ --}}
-    <table class="grid-table">
+    <table class="tabla-principal">
         <thead>
             <tr>
-                <th style="width: 30px;">ITEM</th>
-                <th style="width: 80px;">CÓDIGO</th>
-                <th style="width: 45px;">FUENTE</th>
-                <th style="width: 35px;">EST.</th>
-                <th style="width: 30px;">CANT.</th>
-                <th>DESCRIPCIÓN Y ESPECIFICACIONES</th>
-                <th style="width: 185px;">FOTOGRAFÍAS DEL ACTIVO</th>
+                <th class="col-item">ITEM</th>
+                <th class="col-codigo">CODIGO</th>
+                <th class="col-fuente">FUENTE</th>
+                <th class="col-est">EST.</th>
+                <th class="col-cant">CANT.</th>
+                <th>DESCRIPCIÓN</th>
+                <th class="col-transferencia">TRANSFERENCIA</th>
             </tr>
         </thead>
         <tbody>
-            @forelse($activos as $index => $act)
-                <tr>
-                    <td>{{ $index + 1 }}</td>
-                    <td>
-                        <strong>{{ $act->codigo_activo }}</strong><br>
-                        <small style="font-size: 6px; color: #666;">{{ $act->numero_serie ?? 'S/N' }}</small>
-                    </td>
-                    <td>{{ $act->fuente?->codigo ?? $act->fuenteFinanciamiento?->codigo ?? 'GAEDP' }}</td>
-                    <td>{{ $act->estado_fisico }}</td>
-                    <td>1</td>
-                    <td class="descripcion">
-                        <strong>{{ $act->nombre }}</strong><br>
-                        MARCA: {{ $act->marca ?? '—' }} | MODELO: {{ $act->modelo ?? '—' }}<br>
-                        <small style="color: #555;">{{ $act->descripcion }}</small>
-                    </td>
-                    <td style="padding: 3px;">
-                        <div class="fotos-grid">
-                            {{-- FOTO FRONTAL --}}
-                            <div class="foto-item">
-                                @if($act->imagen && file_exists(public_path('storage/' . $act->imagen)))
-                                    <img class="foto-img" src="{{ public_path('storage/' . $act->imagen) }}" alt="Frontal">
-                                @else
-                                    <div class="foto-vacia">Sin foto</div>
-                                @endif
-                                <div class="foto-label">Frontal</div>
-                            </div>
+            <tr>
+                <td class="col-item" style="text-align: center; font-weight: bold;">1</td>
+                <td class="col-codigo" style="font-weight: bold; text-align: center;">{{ $activo->codigo_activo }}</td>
+                <td class="col-fuente" style="text-align: center;">{{ $activo->fuente->codigo ?? 'GTEL' }}</td>
+                <td class="col-est" style="text-align: center; font-weight: bold;">{{ $activo->estado_fisico ?? 'B' }}</td>
+                <td class="col-cant" style="text-align: center;">1</td>
+                <td>
+                    <strong style="text-transform: uppercase;">{{ $activo->nombre }}</strong>,
+                    MARCA: {{ $activo->marca ?? '—' }}, MODELO: {{ $activo->modelo ?? '—' }},
+                    SERIE: {{ $activo->numero_serie ?? 'S/N' }}.
+                    {{ $activo->descripcion ?? '' }}
 
-                            {{-- FOTO LATERAL --}}
-                            <div class="foto-item">
-                                @if($act->imagen_lateral && file_exists(public_path('storage/' . $act->imagen_lateral)))
-                                    <img class="foto-img" src="{{ public_path('storage/' . $act->imagen_lateral) }}" alt="Lateral">
-                                @else
-                                    <div class="foto-vacia">Sin foto</div>
-                                @endif
-                                <div class="foto-label">Lateral</div>
-                            </div>
-
-                            {{-- FOTO DETALLE --}}
-                            <div class="foto-item">
-                                @if($act->imagen_detalle && file_exists(public_path('storage/' . $act->imagen_detalle)))
-                                    <img class="foto-img" src="{{ public_path('storage/' . $act->imagen_detalle) }}" alt="Detalle">
-                                @else
-                                    <div class="foto-vacia">Sin foto</div>
-                                @endif
-                                <div class="foto-label">Detalle</div>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="7" style="text-align: center; padding: 20px;">
-                        No hay activos asignados para este reporte.
-                    </td>
-                </tr>
-            @endforelse
+                    <div class="imagenes-row">
+                        <table class="img-table">
+                            <tr>
+                                <td>
+                                    <div class="img-box">
+                                        @if($activo->imagen && file_exists(public_path('storage/' . $activo->imagen)))
+                                            <img src="{{ public_path('storage/' . $activo->imagen) }}" alt="Frontal">
+                                        @elseif($activo->imagen)
+                                            <img src="{{ asset('storage/' . $activo->imagen) }}" alt="Frontal">
+                                        @else
+                                            <span style="font-size:8px; color:#777;">Sin foto frontal</span>
+                                        @endif
+                                    </div>
+                                    <div class="img-label">Vista Frontal</div>
+                                </td>
+                                <td>
+                                    <div class="img-box">
+                                        @if($activo->imagen_lateral && file_exists(public_path('storage/' . $activo->imagen_lateral)))
+                                            <img src="{{ public_path('storage/' . $activo->imagen_lateral) }}" alt="Lateral">
+                                        @elseif($activo->imagen_lateral)
+                                            <img src="{{ asset('storage/' . $activo->imagen_lateral) }}" alt="Lateral">
+                                        @else
+                                            <span style="font-size:8px; color:#777;">Sin foto lateral</span>
+                                        @endif
+                                    </div>
+                                    <div class="img-label">Vista Lateral</div>
+                                </td>
+                                <td>
+                                    <div class="img-box">
+                                        @if($activo->imagen_detalle && file_exists(public_path('storage/' . $activo->imagen_detalle)))
+                                            <img src="{{ public_path('storage/' . $activo->imagen_detalle) }}" alt="Detalle">
+                                        @elseif($activo->imagen_detalle)
+                                            <img src="{{ asset('storage/' . $activo->imagen_detalle) }}" alt="Detalle">
+                                        @else
+                                            <span style="font-size:8px; color:#777;">Sin foto placa/detalle</span>
+                                        @endif
+                                    </div>
+                                    <div class="img-label">Placa / Detalle</div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </td>
+                <td class="col-transferencia" style="text-align: center; font-size: 9px; color: #555;">—</td>
+            </tr>
         </tbody>
     </table>
 
-    {{-- ============================================================ --}}
-    {{-- OBSERVACIONES --}}
-    {{-- ============================================================ --}}
-    <table class="obs-table">
+    {{-- ÍTEMS ASIGNADOS --}}
+    <table class="tabla-asignados">
         <tr>
-            <th>OBSERVACIONES:</th>
+            <td style="width: 140px; font-weight: bold; background: #f1f1f1;">ITEMS ASIGNADOS</td>
+            <td style="width: 45px; text-align: center; font-weight: bold;">1</td>
+            <td></td>
+        </tr>
+    </table>
+
+    {{-- SECCIÓN DE FIRMAS Y RESPONSABLES --}}
+    <table class="tabla-firmas">
+        <tr>
+            @php
+                $respList = $responsables->take(2);
+            @endphp
+            @foreach($respList as $resp)
+                <td>
+                    <div class="espacio-firma"></div>
+                    <div class="linea-firma">{{ $resp->nombre_completo ?? 'RESPONSABLE DE BIEN DE USO' }}</div>
+                    <div class="cargo-firma" style="font-weight: bold;">RESPONSABLE DEL BIEN DE USO</div>
+                </td>
+            @endforeach
+            @if($respList->count() == 1)
+                <td></td>
+            @endif
             <td>
-                ASIGNACIÓN PROVISIONAL / DEFINITIVA DE ACTIVOS FIJOS SEGÚN REGISTRO SISTEMA DE INVENTARIOS.
+                <div class="espacio-firma"></div>
+                <div class="linea-firma">Lic. Ana Lía Zapana Cortez</div>
+                <div class="cargo-firma" style="font-weight: bold;">DIRECTORA ADMINISTRATIVA</div>
             </td>
         </tr>
-    </table>
-
-    {{-- ============================================================ --}}
-    {{-- BLOQUE DE FIRMAS (3 firmas) --}}
-    {{-- ============================================================ --}}
-    <table class="signatures-table">
         <tr>
-            {{-- FIRMA 1: CUSTODIO --}}
-            <td style="width: 33%;">
-                <br><br><br>
-                <div class="firma-linea">
-                    RESPONSABLE DEL BIEN EN USO / CUSTODIO<br>
-                    <span class="firma-detalle">
-                        Nombre: {{ $first?->custodioActual?->nombre_completo ?? '—' }}<br>
-                        C.I.: {{ $first?->custodioActual?->ci ?? '—' }}<br>
-                        Cargo: {{ $first?->custodioActual?->cargo ?? '—' }}
-                    </span>
-                </div>
-            </td>
-
-            {{-- FIRMA 2: CUSTODIO ANTERIOR / ENTREGA --}}
-            <td style="width: 33%;">
-                <br><br><br>
-                <div class="firma-linea">
-                    RESPONSABLE ANTERIOR / ENTREGA<br>
-                    <span class="firma-detalle">
-                        Nombre: ____________________<br>
-                        C.I.: ____________________<br>
-                        Cargo: ____________________
-                    </span>
-                </div>
-            </td>
-
-            {{-- FIRMA 3: DIRECTORA ADMINISTRATIVA --}}
-            <td style="width: 34%;">
-                <br><br><br>
-                <div class="firma-linea">
-                    RESPONSABLE DE INVENTARIACIÓN / SABS<br>
-                    <span class="firma-detalle">
-                        Lic. Ana Lía Zapana Cortez<br>
-                        C.I.: 4756925<br>
-                        Directora Administrativa<br>
-                        INSTITUTO TECNOLÓGICO "PUERTO DE MEJILLONES"
-                    </span>
-                </div>
+            @foreach($respList as $resp)
+                <td>
+                    <div style="font-size: 10px;"><strong>NOMBRE:</strong> {{ $resp->nombre_completo ?? '—' }}</div>
+                    <div style="font-size: 10px;"><strong>C.I.:</strong> {{ $resp->ci ?? '—' }}</div>
+                    <div style="font-size: 10px;"><strong>CARGO:</strong> {{ $resp->cargo ?? $resp->rol ?? 'Custodio' }}</div>
+                    <div style="font-size: 10px;"><strong>UNIDAD:</strong> {{ $activo->ambiente->nombre ?? 'ITPM' }}</div>
+                </td>
+            @endforeach
+            @if($respList->count() == 1)
+                <td></td>
+            @endif
+            <td>
+                <div style="font-size: 10px;"><strong>NOMBRE:</strong> Lic. Ana Lía Zapana Cortez</div>
+                <div style="font-size: 10px;"><strong>C.I.:</strong> 4756925 LP</div>
+                <div style="font-size: 10px;"><strong>CARGO:</strong> DIRECTORA ADMINISTRATIVA</div>
+                <div style="font-size: 10px;"><strong>UNIDAD:</strong> DIRECCIÓN ADMINISTRATIVA</div>
             </td>
         </tr>
     </table>
 
-    {{-- ============================================================ --}}
-    {{-- NOTA DE RESPONSABILIDAD --}}
-    {{-- ============================================================ --}}
-    <div class="footer-note">
-        <strong>IMPORTANTE:</strong> Como responsable del bien de uso me comprometo a dar cumplimiento al
-        D.S. 0181 Art. 116 (RESPONSABILIDAD POR EL MANEJO DE BIENES) Parágrafo III. Todos los Servidores Públicos
-        son responsables por el debido uso, custodia, preservación y demanda de servicios de mantenimiento de los
-        bienes que les fueran asignados, de acuerdo al régimen de Responsabilidad por la Función Pública, establecido
-        en la Ley 1178 y sus reglamentos.<br><br>
-        <strong>Art. 157 (PROHIBICIONES PARA LOS FUNCIONARIOS PÚBLICOS SOBRE EL USO DE ACTIVOS FIJOS MUEBLES)</strong>
-        Inc. A, b, c, d, e, f, g, h.<br><br>
-        <strong>NOTA:</strong> COMO RESPONSABLE DEL USO Y CUSTODIO ME COMPROMETO CUMPLIR EL INCISO c :
-        PRESTAR O TRANSFERIR EL BIEN A OTRO EMPLEADO PÚBLICO.
+    {{-- UNIDADES Y OBSERVACIONES --}}
+    <table class="tabla-unidades">
+        <tr>
+            <td style="width: 50%;">UNIDAD : {{ strtoupper($activo->ambiente->nombre ?? 'ITPM CENTRAL') }}</td>
+            <td style="width: 50%;">UNIDAD : DIRECCION ADMINISTRATIVA</td>
+        </tr>
+    </table>
+
+    <table class="tabla-obs">
+        <tr>
+            <td style="width: 50%;">
+                <b>Observaciones :</b> ASIGNACION PROVISIONAL DE ACTIVOS FIJOS (EQUIPAMIENTO 2025) HASTA REGULARIZACION DE RESOLUCION DEPARTAMENTAL DE DONACION.
+            </td>
+            <td style="width: 35%;">
+                <b>LIBERACION EN APLICACION AL ART. 148 DE SABS</b>
+            </td>
+            <td style="width: 15%;">
+                <b>FECHA:</b>
+            </td>
+        </tr>
+    </table>
+    {{-- TEXTO LEGAL INFERIOR --}}
+    <div class="texto-legal">
+    <strong>IMPORTANTE:</strong> Como responsable del bien de uso me comprometo a dar cumplimiento al D.S.0181 Art. 116 (RESPONSABILIDAD POR EL MANEJO DE BIENES) Parágrafo III. Todos los servidores<br>
+        Publicos son responsables por el debido uso, custodia, preservacion y demanda de servicios de mantenimiento de los bienes que les fueran asignados, de acuerdo el régimen de Responsabilidades Por la <br>
+        funcion Publica, establecida en la Ley 1178 y sus reglamentos. <br>
+        Art.157(PROHIBICIONES PARA LOS FUNCIONARIOS PÚBLICOS SOBRE EL USO DE ACTIVOS FIJOS MUEBLES)Inc A,b,c,d,e,f,h,g <br>
+    <strong>NOTA:</strong> COMO RESPONSABLE DEL USO Y CUSTODIO ME COMPROMETO CUMPLIR EL INCISO c: PRESTAR O TRANSFERIR EL BIEN A OTRO EMPLEADO PUBLICO.
     </div>
+
+</div>
 
 </body>
 </html>

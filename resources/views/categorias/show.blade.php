@@ -32,16 +32,34 @@
 
                 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
                     @if (auth()->check() && auth()->user()->esAdmin() && isset($ambiente))
-                        <button type="button" onclick="openActivoModal()"
+                        <a href="{{ route('activos.create', ['id_ambiente' => $ambiente->id_ambiente, 'id_categoria' => $categoria->id_categoria]) }}"
                             style="background:#10b981;color:white;padding:10px 18px;border-radius:10px;font-weight:700;border:none;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;gap:6px;transition:all .2s;"
                             onmouseover="this.style.background='#059669';" onmouseout="this.style.background='#10b981';">
                             ➕ Nuevo Activo
+                        </a>
+                        <button type="button" onclick="imprimirSeleccionadosCat()"
+                            style="background:#f59e0b;color:white;padding:10px 18px;border-radius:10px;font-weight:700;border:none;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;gap:6px;transition:all .2s;"
+                            onmouseover="this.style.background='#d97706';" onmouseout="this.style.background='#f59e0b';">
+                            🏷️ Imprimir seleccionados
+                        </button>
+                        <button type="button" onclick="generarActasRecepcion()"
+                            style="background:#0f766e;color:white;padding:10px 18px;border-radius:10px;font-weight:700;border:none;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;gap:6px;transition:all .2s;"
+                            onmouseover="this.style.background='#0d9488';" onmouseout="this.style.background='#0f766e';">
+                            📋 Actas de Recepción
                         </button>
                         <a href="{{ route('activos.etiquetas', ['id_categoria' => $categoria->id_categoria ?? '']) }}" target="_blank"
                             style="background:#7c3aed;color:white;padding:10px 18px;border-radius:10px;font-weight:700;border:none;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;gap:6px;transition:all .2s;text-decoration:none;"
                             onmouseover="this.style.background='#6b21a8';" onmouseout="this.style.background='#7c3aed';">
-                            🏷️ Imprimir Etiquetas
+                            🏷️ Imprimir todas
                         </a>
+                        <form id="bulk-delete-form" method="POST" action="{{ route('activos.destroyMany') }}" onsubmit="return confirm('¿Eliminar los activos seleccionados? Esta acción no se puede deshacer.');" style="margin:0;">
+                        @csrf
+                        @method('DELETE')
+                    </form>
+                    <button type="submit" form="bulk-delete-form" id="bulk-delete-button" disabled
+                        style="padding:9px 14px;background:#dc2626;color:#fff;border:0;border-radius:8px;font-weight:800;cursor:pointer;opacity:.5;">
+                        🗑️ Eliminar seleccionados
+                    </button>
                     @endif
                 </div>
             </div>
@@ -63,8 +81,38 @@
                     <div style="font-size:24px;font-weight:800;color:#fca5a5;">{{ $totalMalos ?? 0 }}</div>
                     <div style="font-size:11px;font-weight:700;opacity:.9;text-transform:uppercase;margin-top:4px;">Malos/F.F.</div>
                 </div>
-            </div>
         </div>
+    </div>
+
+    <script>
+        function toggleSelectAllCat(checkbox) {
+            document.querySelectorAll('.etiqueta-check-cat').forEach(ch => {
+                ch.checked = checkbox.checked;
+            });
+        }
+
+        function imprimirSeleccionadosCat() {
+            const checks = document.querySelectorAll('.etiqueta-check-cat:checked');
+            if (checks.length === 0) {
+                alert('Selecciona al menos un activo para imprimir etiquetas.');
+                return;
+            }
+            const params = new URLSearchParams();
+            checks.forEach(ch => params.append('ids[]', ch.value));
+            window.open('{{ route('activos.etiquetas') }}?' + params.toString(), '_blank');
+        }
+
+        function generarActasRecepcion() {
+            const checks = document.querySelectorAll('.etiqueta-check-cat:checked');
+            if (checks.length === 0) {
+                alert('Selecciona al menos un activo para generar actas de recepción.');
+                return;
+            }
+            const params = new URLSearchParams();
+            checks.forEach(ch => params.append('ids[]', ch.value));
+            window.open('{{ route('actas.recepcion.pdf.multiple') }}?' + params.toString(), '_blank');
+        }
+    </script>
 
         {{-- ============ LISTADO DE ACTIVOS ============ --}}
         <div id="activos-container" style="background:white;border-radius:16px;border:1px solid #e2e8f0;padding:25px;box-shadow:0 4px 6px -1px rgba(0,0,0,.05);">
@@ -72,6 +120,12 @@
                 <h3 style="font-size:18px;font-weight:800;color:#0f172a;margin:0;">
                     📦 Activos individuales (<span id="total-activos">{{ $totalActivos ?? 0 }}</span>)
                 </h3>
+                @if (auth()->check() && auth()->user()->esAdmin())
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#475569;cursor:pointer;">
+                        <input type="checkbox" onclick="toggleSelectAllCat(this)" style="width:16px;height:16px;">
+                        Seleccionar todos
+                    </label>
+                @endif
             </div>
 
             @if (isset($activos) && $activos->count() > 0)
@@ -79,6 +133,9 @@
                     <table style="width:100%;border-collapse:collapse;font-size:13px;vertical-align:middle;">
                         <thead>
                             <tr style="background:#f1f5f9;color:#475569;text-transform:uppercase;font-size:11px;font-weight:800;">
+                                @if (auth()->check() && auth()->user()->esAdmin())
+                                    <th style="padding:14px 10px;text-align:center;width:45px;">SEL</th>
+                                @endif
                                 <th style="padding:14px 10px;text-align:center;width:45px;">Nº</th>
                                 <th style="padding:14px 10px;text-align:center;width:65px;">QR</th>
                                 <th style="padding:14px 10px;text-align:center;width:65px;">IMAGEN</th>
@@ -95,6 +152,11 @@
                         <tbody id="activos-tbody">
                             @foreach ($activos as $i => $a)
                                 <tr style="border-bottom:1px solid #e2e8f0;">
+                                    @if (auth()->check() && auth()->user()->esAdmin())
+                                        <td style="padding:12px 10px;text-align:center;">
+                                            <input type="checkbox" class="etiqueta-check-cat" value="{{ $a->id_activo }}" style="width:16px;height:16px;">
+                                        </td>
+                                    @endif
                                     <td style="padding:12px 10px;text-align:center;color:#64748b;font-weight:800;">{{ $i + 1 }}</td>
                                     <td style="padding:12px 10px;text-align:center;">
                                         @if ($a->ruta_qr)
@@ -161,10 +223,10 @@
                                                 style="width:30px;height:30px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:13px;">👁️</a>
 
                                             @if (auth()->check() && auth()->user()->esAdmin())
-                                                <button type="button" onclick="openEditActivoModal({{ $a->id_activo }})" title="Editar"
+                                                <a href="{{ route('activos.edit', $a->id_activo) }}" title="Editar"
                                                     style="width:30px;height:30px;background:#fef9c3;color:#ca8a04;border:1px solid #fde047;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;">
                                                     ✏️
-                                                </button>
+                                                </a>
                                             @endif
 
                                             <a href="{{ route('activos.descargar_qr', $a->id_activo) }}" title="Descargar QR"
@@ -174,12 +236,10 @@
                                             <a href="{{ route('activos.etiqueta', $a->id_activo) }}" target="_blank" title="Etiqueta"
                                                 style="width:30px;height:30px;background:#fef3c7;color:#f59e0b;border:1px solid #fde68a;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:13px;">🏷️</a>
                                             @endif
-
                                             @if (auth()->check() && auth()->user()->esAdmin())
-                                            <a href="{{ route('actas.alta.pdf', $a->id_activo) }}" target="_blank" title="Acta de Alta"
+                                            <a href="{{ route('actas.recepcion.pdf', $a->id_activo) }}" target="_blank" title="Acta de Alta"
                                                 style="width:30px;height:30px;background:#d1fae5;color:#059669;border:1px solid #a7f3d0;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:13px;">📋</a>
                                             @endif
-
                                             @if (auth()->check() && auth()->user()->esAdmin())
                                                 <button type="button" onclick="confirmarEliminarActivo({{ $a->id_activo }}, '{{ addslashes($a->codigo_activo) }}', '{{ addslashes($a->nombre) }}')"
                                                     title="Eliminar"
@@ -205,11 +265,12 @@
     </div>
 
     {{-- ============================================================ --}}
-    {{-- MODAL: NUEVO ACTIVO (CON 3 FOTOS) --}}
+    {{-- MODAL: NUEVO ACTIVO --}}
     {{-- ============================================================ --}}
-    <div id="activo-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.7);backdrop-filter:blur(6px);z-index:9999;justify-content:center;align-items:center;padding:16px;">
+    @if(false)
+    <div id="activo-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.7);backdrop-filter:blur(6px);z-index:9999;justify-content:center;align-items:center;padding:16px;" onmousedown="closeActivoModal(event)">
 
-        <div style="background:#ffffff; border-radius:20px; width:100%; max-width:880px; max-height:94vh; display:flex; flex-direction:column; box-shadow:0 30px 60px -12px rgba(0,0,0,0.4); border:1px solid #e2e8f0; overflow:hidden; animation:modalSlideUp 0.25s ease-out;">
+        <div style="background:#ffffff; border-radius:20px; width:100%; max-width:880px; max-height:94vh; display:flex; flex-direction:column; box-shadow:0 30px 60px -12px rgba(0,0,0,0.4); border:1px solid #e2e8f0; overflow:hidden; animation:modalSlideUp 0.25s ease-out;" onmousedown="event.stopPropagation()">
 
             <style>
                 @keyframes modalSlideUp {
@@ -266,6 +327,25 @@
                 .custodio-list option:hover { background:#eff6ff; }
                 .custodio-list option:checked { background:#2563eb; color:white; }
                 .custodio-list option:checked::before { content:'✓ '; font-weight:900; }
+
+                /* ⭐ RV Selector */
+                .rv-box {
+                    display:flex; align-items:center; gap:16px; margin-bottom:12px; padding:12px 16px;
+                    background:#f0fdf4; border:1.5px solid #bbf7d0; border-radius:12px; flex-wrap:wrap;
+                }
+                .rv-label-title { font-size:13px; font-weight:800; color:#166534; }
+                .rv-option {
+                    display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; font-weight:800;
+                    padding:6px 14px; border-radius:8px; border:2px solid transparent; transition:all 0.15s;
+                }
+                .rv-option input { width:16px; height:16px; cursor:pointer; margin:0; }
+                .rv-option.si { color:#166534; }
+                .rv-option.si:hover { background:#dcfce7; }
+                .rv-option.no { color:#991b1b; }
+                .rv-option.no:hover { background:#fee2e2; }
+                .rv-option.si.selected { background:#dcfce7; border-color:#16a34a; }
+                .rv-option.no.selected { background:#fee2e2; border-color:#dc2626; }
+                .rv-hint { font-size:10px; color:#64748b; font-weight:600; margin-left:auto; }
             </style>
 
             {{-- Header --}}
@@ -388,22 +468,26 @@
                         <div class="af-error" data-for="crear-valor-adquisicion"></div>
                     </div>
 
-                    {{-- ⭐ CUSTODIO RESPONSABLE --}}
+                    {{-- ⭐ CUSTODIO RESPONSABLE + RV (RV ARRIBA) --}}
                     <div class="af-span-2">
+
+                        {{-- ⭐ SELECTOR RV (ARRIBA DEL LABEL - SIEMPRE VISIBLE) --}}
+                        <div class="rv-box">
+                            <span class="rv-label-title">🔖 RV:</span>
+                            <label class="rv-option si" id="crear-rv-si-label" onclick="setRvCrear('SI')">
+                                <input type="radio" name="rv" value="SI" id="crear-rv-si">
+                                Sí
+                            </label>
+                            <label class="rv-option no selected" id="crear-rv-no-label" onclick="setRvCrear('NO')">
+                                <input type="radio" name="rv" value="NO" id="crear-rv-no" checked>
+                                No
+                            </label>
+                            <span class="rv-hint">Aplica para Activo Fijo y No Activo</span>
+                        </div>
+
                         <label class="af-label">👤 Custodio Responsable <span class="af-asterisco visible">*</span></label>
-                        <div style="display:flex;flex-direction:column;gap:8px;">
-                            <div style="display:flex;gap:10px;">
-                                <div style="flex:1;">
-                                    <label style="font-size:10px;color:#64748b;font-weight:600;">Filtrar por Carrera</label>
-                                    <select id="filtro-carrera-custodio" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #e2e8f0;background:#f8fafc;font-size:12px;">
-                                        <option value="">Todas las carreras</option>
-                                        @foreach($carreras as $cr)
-                                            <option value="{{ $cr->id_carrera }}">{{ $cr->nombre }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="custodio-wrapper">
+
+                        <div class="custodio-wrapper">
                                 <input type="text" id="buscador-custodio-modal"
                                     class="custodio-search"
                                     placeholder="🔍 Buscar por Ítem, C.I. o Nombre..."
@@ -411,9 +495,7 @@
                                     autocomplete="off">
                                 <select name="id_custodio" id="crear-id-custodio" size="5" class="custodio-list">
                                     <option value="">— Seleccione custodio del ambiente —</option>
-                                    {{-- Custodios cargados por AJAX según el ambiente (ver cargarCustodiosModal) --}}
                                 </select>
-                            </div>
                         </div>
                         <div class="af-error" data-for="crear-id-custodio"></div>
                         <div style="font-size:10px; color:#94a3b8; margin-top:6px; font-weight:600;">
@@ -482,12 +564,14 @@
             </form>
         </div>
     </div>
+    @endif
 
     {{-- ============================================================ --}}
-    {{-- MODAL: EDITAR ACTIVO (CON 3 FOTOS) --}}
+    {{-- MODAL: EDITAR ACTIVO --}}
     {{-- ============================================================ --}}
-    <div id="edit-activo-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;justify-content:center;align-items:center;padding:20px;">
-        <div style="background:white;border-radius:20px;padding:30px;width:100%;max-width:800px;max-height:90vh;overflow-y:auto;box-shadow:0 25px 50px -12px rgba(0,0,0,.25);">
+    @if(false)
+    <div id="edit-activo-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;justify-content:center;align-items:center;padding:20px;" onmousedown="closeEditActivoModal(event)">
+        <div style="background:white;border-radius:20px;padding:30px;width:100%;max-width:800px;max-height:90vh;overflow-y:auto;box-shadow:0 25px 50px -12px rgba(0,0,0,.25);" onmousedown="event.stopPropagation()">
 
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:1px solid #e2e8f0;padding-bottom:12px;">
                 <h3 style="margin:0;font-size:18px;font-weight:800;color:#0f172a;">✏️ Editar Activo</h3>
@@ -590,15 +674,31 @@
                         <div class="af-error" data-for="edit-valor-adquisicion"></div>
                     </div>
 
+                    {{-- ⭐ CUSTODIO + RV EDITAR (RV ARRIBA) --}}
                     <div class="af-span-2">
+
+                        {{-- ⭐ SELECTOR RV EDITAR (ARRIBA DEL LABEL - SIEMPRE VISIBLE) --}}
+                        <div class="rv-box">
+                            <span class="rv-label-title">🔖 RV:</span>
+                            <label class="rv-option si" id="edit-rv-si-label" onclick="setRvEditar('SI')">
+                                <input type="radio" name="rv" value="SI" id="edit-rv-si">
+                                Sí
+                            </label>
+                            <label class="rv-option no selected" id="edit-rv-no-label" onclick="setRvEditar('NO')">
+                                <input type="radio" name="rv" value="NO" id="edit-rv-no" checked>
+                                No
+                            </label>
+                            <span class="rv-hint">Aplica para Activo Fijo y No Activo</span>
+                        </div>
+
                         <label class="af-label">Custodio Responsable *</label>
+
                         <input type="text" id="edit-buscador-custodio-modal" placeholder="🔍 Buscar custodio por Nombre, C.I. o N° de Ítem..."
                             style="width:100%;padding:9px 12px;border-radius:8px 8px 0 0;border:1px solid #cbd5e1;font-size:13px;box-sizing:border-box;background:#f8fafc;"
                             onkeyup="filtrarCustodiosEditModal(this.value)">
                         <select name="id_custodio" id="edit-id-custodio" size="4"
                             style="width:100%;padding:8px;border-radius:0 0 8px 8px;border:1px solid #cbd5e1;border-top:none;font-size:13px;background:white;box-sizing:border-box;">
                             <option value="">— Seleccione custodio del ambiente —</option>
-                            {{-- Custodios cargados por AJAX según el ambiente (ver cargarCustodiosEditModal) --}}
                         </select>
                         <div class="af-error" data-for="edit-id-custodio"></div>
                     </div>
@@ -609,7 +709,7 @@
                         <div class="af-error" data-for="edit-descripcion"></div>
                     </div>
 
-                    {{-- ⭐ 3 ESPACIOS PARA FOTOS EN EDITAR --}}
+                    {{-- 3 FOTOS EDITAR --}}
                     <div class="af-span-2 af-box">
                         <div style="font-size:12px;font-weight:800;display:block;margin-bottom:8px;color:#1e293b;">
                             📷 Fotografías del Activo <span id="edit-lbl-fotos-info" style="font-weight:600;color:#64748b;">(Dejar vacío para mantener)</span>
@@ -641,6 +741,7 @@
             </form>
         </div>
     </div>
+    @endif
 @endsection
 
 @section('scripts')
@@ -705,17 +806,37 @@
         function cambiarTipoBien(tipo) { aplicarTipoBien(tipo, 'crear'); }
         function cambiarTipoBienEdit(tipo) { aplicarTipoBien(tipo, 'edit'); }
 
+        /* ⭐ FUNCIONES RV (SELECTOR SI/NO) */
+        function setRvCrear(valor) {
+            const si = document.getElementById('crear-rv-si');
+            const no = document.getElementById('crear-rv-no');
+            const lblSi = document.getElementById('crear-rv-si-label');
+            const lblNo = document.getElementById('crear-rv-no-label');
+            if (si) si.checked = (valor === 'SI');
+            if (no) no.checked = (valor === 'NO');
+            if (lblSi) lblSi.classList.toggle('selected', valor === 'SI');
+            if (lblNo) lblNo.classList.toggle('selected', valor === 'NO');
+        }
+
+        function setRvEditar(valor) {
+            const si = document.getElementById('edit-rv-si');
+            const no = document.getElementById('edit-rv-no');
+            const lblSi = document.getElementById('edit-rv-si-label');
+            const lblNo = document.getElementById('edit-rv-no-label');
+            if (si) si.checked = (valor === 'SI');
+            if (no) no.checked = (valor === 'NO');
+            if (lblSi) lblSi.classList.toggle('selected', valor === 'SI');
+            if (lblNo) lblNo.classList.toggle('selected', valor === 'NO');
+        }
+
         function filtrarCustodiosModal(texto) {
             const filtro = texto.toLowerCase().trim();
-            const carreraFiltro = document.getElementById('filtro-carrera-custodio')?.value || '';
             const select = document.getElementById('crear-id-custodio');
             for (let i = 0; i < select.options.length; i++) {
                 const opt = select.options[i];
                 const busqueda = opt.getAttribute('data-busqueda') || "";
-                const carreraOpt = opt.getAttribute('data-carrera') || "";
                 const coincideTexto = busqueda.includes(filtro);
-                const coincideCarrera = !carreraFiltro || carreraOpt === carreraFiltro;
-                opt.style.display = (coincideTexto && coincideCarrera) ? "" : "none";
+                opt.style.display = coincideTexto ? "" : "none";
             }
         }
 
@@ -767,15 +888,33 @@
             return !hayErrores;
         }
 
-        async function openActivoModal() {
+        async function openActivoModal(event) {
+            if (event) { event.stopPropagation(); event.stopImmediatePropagation(); }
             const form = document.getElementById('activo-modal-form');
-            form.reset();
+            if (form) form.reset();
             limpiarTodosLosErrores();
-            document.getElementById('select-tipo-bien').value = 'ACTIVO_FIJO';
+            const selectTipo = document.getElementById('select-tipo-bien');
+            if (selectTipo) selectTipo.value = 'ACTIVO_FIJO';
             cambiarTipoBien('ACTIVO_FIJO');
+            // ⭐ Reset RV a "NO" por defecto
+            setRvCrear('NO');
             const idAmbiente = document.getElementById('crear-id-ambiente')?.value || '';
-            cargarCustodiosModal(idAmbiente);
-            document.getElementById('activo-modal').style.display = 'flex';
+            const modal = document.getElementById('activo-modal');
+            if (modal) {
+                modal.style.display = 'flex';
+                modal.dataset.opened = Date.now();
+                modal.dataset.lock = '1';
+            }
+            try {
+                await cargarCustodiosModal(idAmbiente);
+            } finally {
+                if (modal) {
+                    setTimeout(() => {
+                        modal.dataset.lock = '0';
+                        delete modal.dataset.lock;
+                    }, 800);
+                }
+            }
         }
 
         async function cargarCustodiosModal(idAmbiente) {
@@ -796,11 +935,28 @@
                 });
                 const data = await res.json();
                 select.innerHTML = '<option value="">— Seleccione custodio del ambiente —</option>';
+                let grupoActual = null;
                 (data || []).forEach(c => {
+                    const grupo = c.asignado_en_ambiente ? 'ambiente' : 'otros';
+                    if (grupo !== grupoActual) {
+                        const encabezado = document.createElement('option');
+                        encabezado.textContent = grupo === 'ambiente'
+                            ? '── Custodios asignados en este ambiente ──'
+                            : '── Otros usuarios activos ──';
+                        encabezado.disabled = true;
+                        encabezado.style.fontWeight = '700';
+                        select.appendChild(encabezado);
+                        grupoActual = grupo;
+                    }
                     const opt = document.createElement('option');
                     opt.value = c.id;
-                    opt.textContent = c.texto;
+                    opt.textContent = `${String(c.id) === String(idCustodioSeleccionado) ? '✓ ' : ''}${c.texto}${c.asignado_en_ambiente ? ' · Asignado aquí' : ''}`;
                     opt.setAttribute('data-busqueda', c.busqueda || '');
+                    if (String(c.id) === String(idCustodioSeleccionado)) {
+                        opt.selected = true;
+                        opt.style.backgroundColor = '#dcfce7';
+                        opt.style.color = '#166534';
+                    }
                     select.appendChild(opt);
                 });
             } catch (e) {
@@ -809,8 +965,15 @@
             }
         }
 
-        function closeActivoModal() {
-            document.getElementById('activo-modal').style.display = 'none';
+        function closeActivoModal(e) {
+            const modal = document.getElementById('activo-modal');
+            if (!modal) return;
+            if (modal.dataset.lock === '1') return;
+            if (e && e.target && e.target.id !== 'activo-modal') return;
+            if (modal.dataset.opened && (Date.now() - parseInt(modal.dataset.opened)) < 250) {
+                return;
+            }
+            modal.style.display = 'none';
         }
 
         document.getElementById('activo-modal-form')?.addEventListener('submit', async function(e) {
@@ -820,7 +983,10 @@
 
             const form = this;
             const btn = document.getElementById('btn-guardar-activo');
-            btn.disabled = true; btn.innerHTML = '⏳ Guardando...';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Guardando...';
+            }
 
             try {
                 const formData = new FormData(form);
@@ -842,11 +1008,15 @@
                 console.error(err);
                 mostrarToast('⚠️ Error de conexión.', 'error');
             } finally {
-                btn.disabled = false; btn.innerHTML = '💾 Guardar Activo';
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '💾 Guardar Activo';
+                }
             }
         });
 
-        async function openEditActivoModal(idActivo) {
+        async function openEditActivoModal(idActivo, event) {
+            if (event) { event.stopPropagation(); event.preventDefault(); event.stopImmediatePropagation(); }
             try {
                 const res = await fetch(`{{ url('/activos') }}/${idActivo}/edit`, {
                     headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
@@ -870,7 +1040,9 @@
                 document.getElementById('edit-descripcion').value = data.descripcion || '';
                 document.getElementById('edit-select-tipo-bien').value = data.tipo_bien || 'ACTIVO_FIJO';
 
-                // Mostrar previsualizaciones de fotos actuales
+                // ⭐ Cargar valor RV
+                setRvEditar(data.rv === 'SI' ? 'SI' : 'NO');
+
                 document.getElementById('edit-preview-frontal').innerHTML = data.imagen ? `✓ Foto frontal guardada` : `Sin foto frontal`;
                 document.getElementById('edit-preview-lateral').innerHTML = data.imagen_lateral ? `✓ Foto lateral guardada` : `Sin foto lateral`;
                 document.getElementById('edit-preview-detalle').innerHTML = data.imagen_detalle ? `✓ Foto detalle guardada` : `Sin foto detalle`;
@@ -880,9 +1052,22 @@
 
                 document.getElementById('edit-activo-modal-form').action = `{{ url('/activos') }}/${idActivo}`;
 
-                await cargarCustodiosEditModal(data.id_ambiente || '', data.id_custodio || '');
-
-                document.getElementById('edit-activo-modal').style.display = 'flex';
+                const modal = document.getElementById('edit-activo-modal');
+                if (modal) {
+                    modal.style.display = 'flex';
+                    modal.dataset.opened = Date.now();
+                    modal.dataset.lock = '1';
+                }
+                try {
+                    await cargarCustodiosEditModal(data.id_ambiente || '', data.id_custodio || '');
+                } finally {
+                    if (modal) {
+                        setTimeout(() => {
+                            modal.dataset.lock = '0';
+                            delete modal.dataset.lock;
+                        }, 800);
+                    }
+                }
             } catch (err) {
                 console.error(err);
                 mostrarToast('❌ Error al cargar el activo', 'error');
@@ -917,15 +1102,63 @@
                 if (idCustodioSeleccionado) {
                     select.value = idCustodioSeleccionado;
                 }
+                select.addEventListener('change', () => {
+                    Array.from(select.options).forEach(opt => {
+                        if (!opt.value) return;
+                        const marcado = opt.value === select.value;
+                        const texto = opt.textContent.replace(/^✓\s*/, '');
+                        opt.textContent = marcado ? `✓ ${texto}` : texto;
+                        opt.style.backgroundColor = marcado ? '#dcfce7' : '';
+                        opt.style.color = marcado ? '#166534' : '';
+                    });
+                }, { once: true });
             } catch (e) {
                 console.error(e);
                 select.innerHTML = '<option value="">— Error al cargar custodios —</option>';
             }
         }
 
-        function closeEditActivoModal() {
-            document.getElementById('edit-activo-modal').style.display = 'none';
+        function closeEditActivoModal(e) {
+            const modal = document.getElementById('edit-activo-modal');
+            if (!modal) return;
+            if (modal.dataset.lock === '1') return;
+            if (e && e.target && e.target.id !== 'edit-activo-modal') return;
+            if (modal.dataset.opened && (Date.now() - parseInt(modal.dataset.opened)) < 250) {
+                return;
+            }
+            modal.style.display = 'none';
         }
+
+        // Bloquear cierre forzado por JS global mientras el modal está abriendo/cargando
+        document.addEventListener('DOMContentLoaded', function() {
+            const modalNuevo = document.getElementById('activo-modal');
+            if (modalNuevo) {
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.attributeName === 'style') {
+                            if (modalNuevo.dataset.lock === '1' && modalNuevo.style.display === 'none') {
+                                modalNuevo.style.display = 'flex';
+                            }
+                        }
+                    });
+                });
+                observer.observe(modalNuevo, { attributes: true });
+            }
+
+            const modalEditar = document.getElementById('edit-activo-modal');
+            if (modalEditar) {
+                const observer2 = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.attributeName === 'style') {
+                            if (modalEditar.dataset.lock === '1' && modalEditar.style.display === 'none') {
+                                modalEditar.style.display = 'flex';
+                            }
+                        }
+                    });
+                });
+                observer2.observe(modalEditar, { attributes: true });
+            }
+        });
 
         document.getElementById('edit-activo-modal-form')?.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -934,7 +1167,10 @@
 
             const form = this;
             const btn = document.getElementById('btn-actualizar-activo');
-            btn.disabled = true; btn.innerHTML = '⏳ Actualizando...';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Actualizando...';
+            }
 
             try {
                 const formData = new FormData(form);
@@ -957,7 +1193,10 @@
                 console.error(err);
                 mostrarToast('⚠️ Error de conexión.', 'error');
             } finally {
-                btn.disabled = false; btn.innerHTML = '💾 Actualizar Activo';
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '💾 Actualizar Activo';
+                }
             }
         });
 
@@ -1018,9 +1257,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             cambiarTipoBien('ACTIVO_FIJO');
             cambiarTipoBienEdit('ACTIVO_FIJO');
-            document.getElementById('filtro-carrera-custodio')?.addEventListener('change', function() {
-                filtrarCustodiosModal(document.getElementById('buscador-custodio-modal')?.value || '');
-            });
+            setRvCrear('NO');
+            setRvEditar('NO');
         });
     </script>
 @endsection

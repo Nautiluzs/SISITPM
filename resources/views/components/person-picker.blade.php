@@ -5,6 +5,7 @@
     'selectedTexto' => null,
     'placeholder' => 'Buscar por nombre, C.I., cargo o número de ítem…',
     'required' => false,
+    'ambienteField' => 'id_ambiente',
 ])
 
 <div class="person-picker" id="{{ $id }}-wrap" data-person-picker>
@@ -99,12 +100,14 @@
             const resumenNombre = document.getElementById(visible.id + '-resumen-nombre');
             const resumenDetalle = document.getElementById(visible.id + '-resumen-detalle');
             const selects = Array.from(panel.querySelectorAll('[data-filtro]'));
+            const ambiente = document.getElementById(@json($ambienteField));
 
             let timer = null;
             let indice = -1;
 
             function filtrosActivos() {
                 const params = new URLSearchParams({ q: visible.value.trim() });
+                if (ambiente && ambiente.value) params.set('ambiente_id', ambiente.value);
                 selects.forEach((s) => { if (s.value) params.set(s.dataset.filtro, s.value); });
                 return params;
             }
@@ -173,6 +176,7 @@
 
                 const usuarios = respuesta.resultados || [];
                 lista.innerHTML = '';
+                let grupoActual = null;
 
                 if (!usuarios.length) {
                     const li = document.createElement('li');
@@ -185,12 +189,27 @@
                 }
 
                 usuarios.forEach((usuario) => {
+                    const grupo = usuario.asignado_en_ambiente ? 'ambiente' : 'otros';
+                    if (grupo !== grupoActual) {
+                        const encabezado = document.createElement('li');
+                        encabezado.textContent = grupo === 'ambiente'
+                            ? 'Custodios asignados en este ambiente'
+                            : 'Otros usuarios activos';
+                        encabezado.style.cssText = 'padding:7px 10px 5px;color:#475569;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;background:#f8fafc;border-bottom:1px solid #e2e8f0;';
+                        encabezado.setAttribute('aria-hidden', 'true');
+                        lista.appendChild(encabezado);
+                        grupoActual = grupo;
+                    }
+
                     const li = document.createElement('li');
+                    const seleccionado = String(oculto.value) === String(usuario.id_usuario);
                     li.setAttribute('role', 'option');
+                    li.setAttribute('aria-selected', seleccionado ? 'true' : 'false');
                     li.dataset.usuario = JSON.stringify(usuario);
-                    li.style.cssText = 'padding:8px 10px;border-radius:6px;cursor:pointer;color:#0f172a;';
-                    li.addEventListener('mouseenter', () => { li.style.background = '#eff6ff'; });
-                    li.addEventListener('mouseleave', () => { li.style.background = 'transparent'; });
+                    li.style.cssText = 'padding:8px 10px;border-radius:6px;cursor:pointer;color:#0f172a;'
+                        + (seleccionado ? 'background:#dcfce7;border:1px solid #86efac;' : 'border:1px solid transparent;');
+                    li.addEventListener('mouseenter', () => { li.style.background = seleccionado ? '#bbf7d0' : '#eff6ff'; });
+                    li.addEventListener('mouseleave', () => { li.style.background = seleccionado ? '#dcfce7' : 'transparent'; });
                     li.addEventListener('click', () => seleccionar(usuario));
 
                     const items = (usuario.items || []).length
@@ -200,9 +219,12 @@
                     const carrera = usuario.carrera
                         ? '<span style="display:inline-block;background:#f3e8ff;color:#7c3aed;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:800;">' + usuario.carrera + '</span> '
                         : '';
+                    const ambienteBadge = usuario.asignado_en_ambiente
+                        ? '<span style="display:inline-block;background:#dcfce7;color:#166534;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:800;margin-left:5px;">Asignado aquí</span>'
+                        : '';
 
                     li.innerHTML =
-                        '<div style="font-size:13px;font-weight:700;">' + carrera + usuario.nombre_completo + '</div>' +
+                        '<div style="font-size:13px;font-weight:700;">' + (seleccionado ? '✓ ' : '') + carrera + usuario.nombre_completo + ambienteBadge + '</div>' +
                         '<div style="font-size:11px;color:#64748b;">C.I. ' + usuario.ci
                             + (usuario.cargo ? ' · ' + usuario.cargo : '')
                             + (usuario.unidad ? ' · ' + usuario.unidad : '') + '</div>' +
@@ -241,6 +263,9 @@
             });
 
             selects.forEach((s) => s.addEventListener('change', cargar));
+            if (ambiente) ambiente.addEventListener('change', () => {
+                if (panel.style.display !== 'none') cargar();
+            });
 
             visible.addEventListener('keydown', (e) => {
                 if (panel.style.display === 'none') return;

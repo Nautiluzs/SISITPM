@@ -2,23 +2,25 @@
 
 namespace App\Http\Controllers\Web;
 
-use App\Http\Controllers\Controller;
 use App\Http\Controllers\AprobacionVerificacionController;
+use App\Http\Controllers\Controller;
+use App\Models\ActivoFijo;
 use App\Models\Ambiente;
 use App\Models\Carrera;
 use App\Models\Categoria;
-use App\Models\ActivoFijo;
+use App\Models\User;
 use App\Models\VerificacionFisica;
-use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class VerificacionController extends Controller
 {
     public function index(Request $request)
     {
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = Auth::user();
 
         $carrerasQuery = Carrera::orderBy('nombre', 'asc');
@@ -91,7 +93,7 @@ class VerificacionController extends Controller
 
     public function guardarItem(Request $request)
     {
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = Auth::user();
 
         if (! $user?->puedeRegistrarVerificacion()) {
@@ -99,20 +101,20 @@ class VerificacionController extends Controller
         }
 
         $data = $request->validate([
-            'activo_id'           => 'required|exists:activos_fijos,id_activo',
+            'activo_id' => 'required|exists:activos_fijos,id_activo',
             'ambiente_escaneo_id' => 'required|exists:ambientes,id_ambiente',
-            'es_correspondencia'  => 'required|boolean',
-            'estado_fisico'       => 'nullable|in:B,R,M,FF',
-            'observaciones'       => 'nullable|string',
-            'solicitar_baja'      => 'nullable|boolean',
-            'es_sustitucion'      => 'nullable|boolean',
-            'sustituto_codigo'    => 'nullable|string|max:50',
-            'sustituto_nombre'    => 'nullable|string|max:150',
-            'sustituto_marca'     => 'nullable|string|max:80',
-            'sustituto_modelo'    => 'nullable|string|max:80',
-            'sustituto_serie'     => 'nullable|string|max:80',
-            'sustituto_valor'     => 'nullable|numeric|min:0',
-            'sustituto_fecha'     => 'nullable|date',
+            'es_correspondencia' => 'required|boolean',
+            'estado_fisico' => 'nullable|in:B,R,M,FF',
+            'observaciones' => 'nullable|string',
+            'solicitar_baja' => 'nullable|boolean',
+            'es_sustitucion' => 'nullable|boolean',
+            'sustituto_codigo' => 'nullable|string|max:50',
+            'sustituto_nombre' => 'nullable|string|max:150',
+            'sustituto_marca' => 'nullable|string|max:80',
+            'sustituto_modelo' => 'nullable|string|max:80',
+            'sustituto_serie' => 'nullable|string|max:80',
+            'sustituto_valor' => 'nullable|numeric|min:0',
+            'sustituto_fecha' => 'nullable|date',
         ]);
 
         $activo = ActivoFijo::findOrFail($data['activo_id']);
@@ -122,7 +124,7 @@ class VerificacionController extends Controller
         if (! $permitidos->contains($activo->id_activo)) {
             return response()->json([
                 'success' => false,
-                'error'   => 'Ese activo no le corresponde.',
+                'error' => 'Ese activo no le corresponde.',
             ], 403);
         }
 
@@ -130,7 +132,7 @@ class VerificacionController extends Controller
 
         $observaciones = $data['observaciones'] ?? null;
         if ($request->boolean('solicitar_baja')) {
-            $observaciones = ($observaciones ? $observaciones . "\n" : '') . '[Solicitar baja del activo]';
+            $observaciones = ($observaciones ? $observaciones."\n" : '').'[Solicitar baja del activo]';
         }
 
         $estadoFisicoSolicitado = $data['estado_fisico'] ?? null;
@@ -139,37 +141,37 @@ class VerificacionController extends Controller
         // Sustitución: baja del equipo viejo y alta del nuevo que sale del almacén.
         $datosSustituto = null;
         if ($request->boolean('es_sustitucion') && ! empty($data['sustituto_codigo'])) {
-            $observaciones = ($observaciones ? $observaciones . "\n" : '')
-                . '[Sustitución por ' . $data['sustituto_codigo'] . ']';
+            $observaciones = ($observaciones ? $observaciones."\n" : '')
+                .'[Sustitución por '.$data['sustituto_codigo'].']';
 
             $datosSustituto = [
-                'codigo_activo'     => $data['sustituto_codigo'],
-                'nombre'            => $data['sustituto_nombre'] ?? $data['sustituto_codigo'],
-                'marca'             => $data['sustituto_marca'] ?? null,
-                'modelo'            => $data['sustituto_modelo'] ?? null,
-                'numero_serie'      => $data['sustituto_serie'] ?? null,
+                'codigo_activo' => $data['sustituto_codigo'],
+                'nombre' => $data['sustituto_nombre'] ?? $data['sustituto_codigo'],
+                'marca' => $data['sustituto_marca'] ?? null,
+                'modelo' => $data['sustituto_modelo'] ?? null,
+                'numero_serie' => $data['sustituto_serie'] ?? null,
                 'valor_adquisicion' => $data['sustituto_valor'] ?? null,
                 'fecha_adquisicion' => $data['sustituto_fecha'] ?? null,
             ];
         }
 
         $datos = [
-            'id_verificador'                  => $user->id_usuario,
-            'fecha_verificacion'              => now(),
-            'es_correspondencia_correcta'     => $esCorrecto,
-            'sincronizado_offline'            => false,
-            'dispositivo_uuid'                => substr((string) $request->header('User-Agent'), 0, 50),
-            'estado_fisico_reportado'         => $estadoFisicoSolicitado ?: $activo->estado_fisico,
-            'observaciones'                   => $observaciones,
-            'estado_aprobacion'               => VerificacionFisica::ESTADO_PENDIENTE,
-            'id_aprobador'                    => null,
-            'fecha_aprobacion'                => null,
-            'comentario_aprobacion'           => null,
+            'id_verificador' => $user->id_usuario,
+            'fecha_verificacion' => now(),
+            'es_correspondencia_correcta' => $esCorrecto,
+            'sincronizado_offline' => false,
+            'dispositivo_uuid' => substr((string) $request->header('User-Agent'), 0, 50),
+            'estado_fisico_reportado' => $estadoFisicoSolicitado ?: $activo->estado_fisico,
+            'observaciones' => $observaciones,
+            'estado_aprobacion' => VerificacionFisica::ESTADO_PENDIENTE,
+            'id_aprobador' => null,
+            'fecha_aprobacion' => null,
+            'comentario_aprobacion' => null,
             'cambio_estado_fisico_solicitado' => $cambioEstadoFisicoSolicitado,
-            'estado_fisico_solicitado'        => $estadoFisicoSolicitado,
-            'solicitar_baja'                  => $request->boolean('solicitar_baja'),
-            'verificacion_finalizada'         => false,
-            'datos_extra'                     => $datosSustituto,
+            'estado_fisico_solicitado' => $estadoFisicoSolicitado,
+            'solicitar_baja' => $request->boolean('solicitar_baja'),
+            'verificacion_finalizada' => false,
+            'datos_extra' => $datosSustituto,
         ];
 
         // Si la verificación anterior de este activo ya fue resuelta, no se
@@ -186,28 +188,28 @@ class VerificacionController extends Controller
 
         if ($anterior) {
             $verificacion = VerificacionFisica::create(array_merge($datos, [
-                'id_activo'           => $activo->id_activo,
+                'id_activo' => $activo->id_activo,
                 'id_ambiente_escaneo' => $data['ambiente_escaneo_id'],
             ]));
 
             return response()->json([
-                'success'      => true,
-                'mensaje'      => 'Verificación guardada. La anterior ya estaba aprobada, así que se conservó.',
+                'success' => true,
+                'mensaje' => 'Verificación guardada. La anterior ya estaba aprobada, así que se conservó.',
                 'verificacion' => $verificacion,
             ]);
         }
 
         $verificacion = VerificacionFisica::updateOrCreate(
             [
-                'id_activo'           => $activo->id_activo,
+                'id_activo' => $activo->id_activo,
                 'id_ambiente_escaneo' => $data['ambiente_escaneo_id'],
             ],
             $datos
         );
 
         return response()->json([
-            'success'      => true,
-            'mensaje'      => 'Verificación guardada en base de datos.',
+            'success' => true,
+            'mensaje' => 'Verificación guardada en base de datos.',
             'verificacion' => $verificacion,
         ]);
     }
@@ -231,13 +233,20 @@ class VerificacionController extends Controller
             $info = $map->get($act->id_activo);
             $act->estado_verificacion = $info['estado'] ?? 'Verificado';
             $act->observacion_verificacion = $info['observacion'] ?? 'Sin observaciones';
+
+            foreach (['imagen', 'imagen_lateral', 'imagen_detalle'] as $campo) {
+                $ruta = $act->{$campo};
+                $act->{$campo.'_data'} = $ruta && Storage::disk('public')->exists($ruta)
+                    ? 'data:'.Storage::disk('public')->mimeType($ruta).';base64,'.base64_encode(Storage::disk('public')->get($ruta))
+                    : null;
+            }
         });
 
         $pdf = Pdf::loadView('verificaciones.reporte_pdf', compact('activos', 'ambiente'))
-            ->setPaper('letter', 'portrait')
+            ->setPaper('letter', 'landscape')
             ->setOption(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true]);
 
-        return $pdf->stream('Reporte_Verificacion_' . str_replace(' ', '_', $ambiente->nombre) . '_' . date('d_m_Y') . '.pdf');
+        return $pdf->stream('Reporte_Verificacion_'.str_replace(' ', '_', $ambiente->nombre).'_'.date('d_m_Y').'.pdf');
     }
 
     public function exportarExcel(Request $request)
@@ -259,11 +268,18 @@ class VerificacionController extends Controller
             $info = $map->get($act->id_activo);
             $act->estado_verificacion = $info['estado'] ?? 'Verificado';
             $act->observacion_verificacion = $info['observacion'] ?? 'Sin observaciones';
+
+            foreach (['imagen', 'imagen_lateral', 'imagen_detalle'] as $campo) {
+                $ruta = $act->{$campo};
+                $act->{$campo.'_data'} = $ruta && Storage::disk('public')->exists($ruta)
+                    ? 'data:'.Storage::disk('public')->mimeType($ruta).';base64,'.base64_encode(Storage::disk('public')->get($ruta))
+                    : null;
+            }
         });
 
         return response()->view('verificaciones.reporte_excel', compact('activos', 'ambiente'))
             ->header('Content-Type', 'application/vnd.ms-excel; charset=utf-8')
-            ->header('Content-Disposition', 'attachment; filename="Reporte_Verificacion_' . str_replace(' ', '_', $ambiente->nombre) . '_' . date('d_m_Y') . '.xls"');
+            ->header('Content-Disposition', 'attachment; filename="Reporte_Verificacion_'.str_replace(' ', '_', $ambiente->nombre).'_'.date('d_m_Y').'.xls"');
     }
 
     public function finalizar(Request $request)
@@ -272,7 +288,7 @@ class VerificacionController extends Controller
             'ambiente_id' => 'required|exists:ambientes,id_ambiente',
         ]);
 
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = Auth::user();
         if (! $user?->puedeFinalizarVerificacion()) {
             return response()->json(['success' => false, 'error' => 'No autorizado'], 403);
@@ -283,7 +299,7 @@ class VerificacionController extends Controller
         if (! $ambiente) {
             return response()->json([
                 'success' => false,
-                'error'   => 'Ese ambiente no le corresponde.',
+                'error' => 'Ese ambiente no le corresponde.',
             ], 403);
         }
 
@@ -317,7 +333,7 @@ class VerificacionController extends Controller
                     'tiempo_transcurrido' => $request->input('tiempo_transcurrido', 'No registrado'),
                 ]));
         } catch (\Throwable $e) {
-            Log::warning('No se pudo notificar: ' . $e->getMessage());
+            Log::warning('No se pudo notificar: '.$e->getMessage());
         }
 
         return response()->json([
@@ -337,7 +353,7 @@ class VerificacionController extends Controller
             ->get(['id_categoria', 'codigo', 'nombre']);
 
         return response()->json([
-            'success'    => true,
+            'success' => true,
             'categorias' => $categorias,
         ]);
     }

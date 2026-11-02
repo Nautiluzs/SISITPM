@@ -2,58 +2,68 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Etiquetas de Activos</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', Arial, Helvetica, sans-serif; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', Arial, Helvetica, sans-serif;
+        }
 
         @page {
             size: letter portrait;
-            margin: 6mm;
+            margin: 5mm;
         }
 
         body {
-            font-size: 8px;
-            color: #000;
-            background: #e2e8f0;
-            padding: 20px;
+            font-size: 10px;
+            color: #000000;
+            background: #fff;
+            padding: 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
 
         .sheet {
-            width: 200mm;
+            width: 100%;
+            max-width: 202mm;
             background: white;
-            padding: 2mm;
             margin: 0 auto;
-            box-shadow: 0 10px 30px rgba(0,0,0,.15);
         }
 
         .sheet-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1.5px solid #0f172a;
-            padding-bottom: 3px;
-            margin-bottom: 4px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 4px;
+            margin-bottom: 6px;
         }
-        .sheet-header .inst   { font-size: 8px; font-weight: 800; color: #0f172a; text-transform: uppercase; }
-        .sheet-header .titulo { font-size: 9px; font-weight: 800; color: #0f172a; text-transform: uppercase; }
-        .sheet-header .gestion{ font-size: 7px; font-weight: 700; color: #64748b; }
+        .sheet-header .inst { font-size: 11px; font-weight: 800; color: #000; text-transform: uppercase; }
+        .sheet-header .titulo { font-size: 12px; font-weight: 800; color: #000; text-transform: uppercase; }
+        .sheet-header .gestion { font-size: 10px; font-weight: 700; color: #000; }
 
         .subtitulo {
             text-align: center;
-            font-size: 7px;
-            font-weight: 800;
-            color: #64748b;
+            font-size: 9.5px;
+            font-weight: 700;
+            color: #000;
             text-transform: uppercase;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
             letter-spacing: .5px;
         }
 
-        /* Grid: 3 etiquetas por fila */
+        /* Grid: 3 columnas */
         table.grid {
             width: 100%;
             border-collapse: separate;
-            border-spacing: 1.2mm;
+            border-spacing: 2mm 3mm;
             table-layout: fixed;
+        }
+        table.grid tr {
+            page-break-inside: avoid;
         }
         table.grid td {
             width: 33.33%;
@@ -61,24 +71,24 @@
             padding: 0;
         }
 
-        /* ===== ETIQUETA 62mm x 20mm ===== */
+        /* ===== ETIQUETA 65mm x 25mm ===== */
         .etiqueta {
             position: relative;
-            width: 62mm;
-            height: 20mm;
-            border: 1px solid #0f172a;
-            border-radius: 2.5px;
+            width: 65mm;
+            height: 25mm;
+            border: 1.2px solid #000;
+            border-radius: 3px;
             overflow: hidden;
-            background: #fff;
+            background: #ffffff;
         }
 
         .etiqueta-info {
             position: absolute;
             top: 0;
             left: 0;
-            right: 13mm;              /* QR más angosto */
-            bottom: 0;
-            padding: 1mm 1.8mm;
+            width: 43mm;
+            height: 25mm;
+            padding: 1mm 1.2mm;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -87,118 +97,133 @@
         .etiqueta-header {
             display: flex;
             align-items: center;
-            gap: 2.5px;
-            padding-bottom: 0.8px;
-            border-bottom: 0.8px solid #0f172a;
-            margin-bottom: 1px;
+            gap: 3px;
+            padding-bottom: 1px;
+            border-bottom: 1px solid #000;
         }
         .etiqueta-logo {
-            width: 10px;
-            height: 10px;
+            width: 11px;
+            height: 11px;
             object-fit: contain;
             flex-shrink: 0;
         }
         .etiqueta-institucion {
-            flex: 1;
-            font-size: 4.3px;
+            font-size: 5.5px;
             font-weight: 800;
-            color: #0f172a;
+            color: #000;
             text-transform: uppercase;
-            line-height: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            line-height: 1.1;
+            text-align: center;
+            flex: 1;
         }
 
         .etiqueta-body {
             display: flex;
             flex-direction: column;
-            gap: 0.6px;
+            gap: 1px;
+            justify-content: space-around;
             flex: 1;
-            justify-content: center;
-            min-width: 0;
+            padding-top: 1px;
         }
 
         .etiqueta-row {
             display: flex;
             align-items: center;
-            gap: 1.5px;
-            font-size: 5px;
-            line-height: 1.05;
-            min-width: 0;
+            gap: 2px;
+            line-height: 1;
         }
         .etiqueta-row .label {
             font-weight: 800;
-            color: #0f172a;
+            color: #000000;
             text-transform: uppercase;
-            font-size: 4.5px;
-            min-width: 22px;
+            font-size: 7px;
+            min-width: 34px;
             flex-shrink: 0;
         }
         .etiqueta-row .value {
             font-weight: 700;
-            color: #1e293b;
-            font-size: 5.5px;
+            color: #000000;
+            font-size: 7.5px;
             flex: 1;
-            min-width: 0;
-            word-break: break-word;
         }
 
+        /* Contenedor inferior unificado con la misma fuente y estilo */
+        .etiqueta-footer-row {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 6px;
+            line-height: 1;
+        }
+        .etiqueta-footer-row .gestion-box {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        .etiqueta-footer-row .rv-box {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        /* Destacados */
         .etiqueta-codigo {
-            font-size: 7px !important;
-            font-weight: 800 !important;
+            font-size: 8.5px !important;
+            font-weight: 900 !important;
             color: #dc2626 !important;
         }
+
         .etiqueta-nombre {
-            font-size: 6px !important;
+            font-size: 8px !important;
             font-weight: 800 !important;
-            color: #0f172a !important;
+            color: #000000 !important;
             text-transform: uppercase;
         }
 
         .etiqueta-fuente {
             display: inline-block;
             background: #f1f5f9;
-            color: #334155;
-            font-size: 4.5px;
+            color: #000000;
+            font-size: 6.5px;
             font-weight: 800;
-            padding: 0.3px 2.5px;
+            padding: 0px 3px;
             border-radius: 2px;
-            border: 1px solid #cbd5e1;
+            border: 0.8px solid #000;
             text-transform: uppercase;
         }
 
-        /* ===== QR DERECHA ===== */
+        /* ===== QR SECCIÓN DERECHA ===== */
         .etiqueta-qr {
             position: absolute;
             top: 0;
             right: 0;
-            bottom: 0;
-            width: 13mm;
-            background: #f8fafc;
-            border-left: 1px dashed #cbd5e1;
+            width: 20mm;
+            height: 25mm;
+            background: #ffffff;
+            border-left: 1px solid #000;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 0.8mm 0.4mm;
+            padding: 1mm;
         }
         .etiqueta-qr img {
-            width: 10mm;
-            height: 10mm;
+            width: 20mm;
+            height: 23mm;
+            object-fit: contain;
             display: block;
-            background: white;
-            border-radius: 2px;
-            border: 0.8px solid #e2e8f0;
         }
-        .etiqueta-qr-label {
-            margin-top: 0.6px;
-            font-size: 2.6px;
+        .etiqueta-qr-placeholder {
+            width: 18mm;
+            height: 18mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
             font-weight: 800;
-            color: #64748b;
-            text-transform: uppercase;
-            text-align: center;
-            line-height: 1;
+            color: #dc2626;
+            background: #f8fafc;
+            border: 1px dashed #000;
+            border-radius: 2px;
         }
 
         @media print {
@@ -210,7 +235,6 @@
                 box-shadow: none !important;
                 padding: 0 !important;
                 margin: 0 !important;
-                width: 100% !important;
             }
         }
     </style>
@@ -219,84 +243,120 @@
 
     <div class="sheet">
         <div class="sheet-header">
-            <div class="inst">INST. TECNOLOGICO PUERTO DE MEJILLONES</div>
+            <div class="inst">INSTITUTO TECNOLÓGICO PUERTO DE MEJILLONES</div>
             <div class="titulo">ETIQUETAS DE ACTIVOS</div>
             <div class="gestion">GESTIÓN {{ date('Y') }}</div>
         </div>
 
         <div class="subtitulo">
-            {{ count($activos) }} etiqueta{{ count($activos) !== 1 ? 's' : '' }} para imprimir
+            {{ isset($activos) ? count($activos) : 0 }} etiquetas registradas para impresión
         </div>
 
         <table class="grid">
-            @foreach ($activos as $i => $activo)
-                @if ($i % 3 === 0)
-                    <tr>
-                @endif
+            @if(isset($activos) && count($activos) > 0)
+                @foreach ($activos as $i => $activo)
+                    @if ($i % 3 === 0)
+                        <tr>
+                    @endif
 
-                <td>
-                    @php
-                        $logoImage = $logoDataUri ?? '';
-                        $qrImage = '';
-                        if (!empty($activo->qr_data_uri)) {
-                            $qrImage = $activo->qr_data_uri;
-                        } elseif (!empty($activo->ruta_qr) && \Storage::disk('public')->exists($activo->ruta_qr)) {
-                            $qrImage = 'data:image/png;base64,' . base64_encode(\Storage::disk('public')->get($activo->ruta_qr));
-                        }
-                    @endphp
+                    <td>
+                        @php
+                            $logoImage = $logoDataUri ?? (file_exists(public_path('images/logo.png')) ? asset('images/logo.png') : '');
 
-                    <div class="etiqueta">
-                        <div class="etiqueta-info">
-                            <div class="etiqueta-header">
-                                @if($logoImage)
-                                    <img src="{{ $logoImage }}" alt="Logo" class="etiqueta-logo">
-                                @elseif(file_exists(public_path('images/logo.png')))
-                                    <img src="{{ asset('images/logo.png') }}" alt="Logo" class="etiqueta-logo">
+                            $qrImage = '';
+                            if (!empty($activo->qr_data_uri)) {
+                                $qrImage = $activo->qr_data_uri;
+                            } elseif (!empty($activo->ruta_qr) && \Storage::disk('public')->exists($activo->ruta_qr)) {
+                                $qrImage = 'data:image/png;base64,' . base64_encode(\Storage::disk('public')->get($activo->ruta_qr));
+                            }
+
+                            $gestionVal = $activo->fecha_adquisicion ?? $activo->gestion ?? $activo->created_at ?? date('Y');
+                            if(is_object($gestionVal) && method_exists($gestionVal, 'format')) {
+                                $gestionVal = $gestionVal->format('Y');
+                            } else {
+                                $gestionVal = substr((string)$gestionVal, 0, 4);
+                                if(empty($gestionVal)) $gestionVal = date('Y');
+                            }
+
+                            $codigoVal = $activo->codigo_activo ?? $activo->codigo ?? $activo->codigo_patrimonial ?? 'S/C';
+                            $unidadVal = $activo->ambiente->nombre ?? $activo->unidad ?? $activo->departamento ?? 'TALLER';
+                            $nombreVal = $activo->nombre ?? $activo->descripcion ?? $activo->detalle ?? 'ACTIVO FIJO';
+
+                            $fuenteVal = 'PSP';
+                            if(isset($activo->fuente)) {
+                                $fuenteVal = is_object($activo->fuente) ? ($activo->fuente->codigo ?? $activo->fuente->nombre ?? 'PSP') : $activo->fuente;
+                            } elseif(isset($activo->fuente_financiamiento)) {
+                                $fuenteVal = $activo->fuente_financiamiento;
+                            }
+                        @endphp
+
+                        <div class="etiqueta">
+                            <div class="etiqueta-info">
+                                <div class="etiqueta-header">
+                                    @if($logoImage)
+                                        <img src="{{ $logoImage }}" alt="Logo" class="etiqueta-logo">
+                                    @endif
+                                    <div class="etiqueta-institucion">INSTITUTO TECNOLÒGICO PUERTO DE MEJILLONES</div>
+                                </div>
+
+                                <div class="etiqueta-body">
+                                    <!-- 1. CÓDIGO -->
+                                    <div class="etiqueta-row">
+                                        <span class="label">CÓDIGO:</span>
+                                        <span class="value etiqueta-codigo">{{ $codigoVal }}</span>
+                                    </div>
+                                    <!-- 2. ACTIVO -->
+                                    <div class="etiqueta-row">
+                                        <span class="label">ACTIVO:</span>
+                                        <span class="value etiqueta-nombre">{{ $nombreVal }}</span>
+                                    </div>
+                                    <!-- 3. UNIDAD -->
+                                    <div class="etiqueta-row">
+                                        <span class="label">UNIDAD:</span>
+                                        <span class="value">{{ $unidadVal }}</span>
+                                    </div>
+                                    <!-- 4. FUENTE -->
+                                    <div class="etiqueta-row">
+                                        <span class="label">FUENTE:</span>
+                                        <span class="etiqueta-fuente">{{ $fuenteVal }}</span>
+                                    </div>
+                                    <!-- 5. GESTIÓN Y RV UNIFICADOS CON LA MISMA TIPOGRAFÍA -->
+                                    <div class="etiqueta-footer-row">
+                                        <div class="gestion-box">
+                                            <span class="label" style="min-width: 34px; font-size: 7px; font-weight: 800;">GESTIÓN:</span>
+                                            <span class="value" style="font-size: 7.5px; font-weight: 700;">{{ $gestionVal }}</span>
+                                        </div>
+                                        <div class="rv-box">
+                                            <span class="label" style="min-width: 14px; font-size: 7px; font-weight: 800; margin-left: 0px;">RV:</span>
+                                            <span class="value" style="font-size: 7.5px; font-weight: 700;">
+                                                {{ (isset($activo->rv) && $activo->rv === 'SI') ? 'SÍ' : 'NO' }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="etiqueta-qr">
+                                @if($qrImage)
+                                    <img src="{{ $qrImage }}" alt="QR">
+                                @else
+                                    <div class="etiqueta-qr-placeholder">SIN QR</div>
                                 @endif
-                                <div class="etiqueta-institucion">INST. TECNOLOGICO PUERTO DE MEJILLONES</div>
-                            </div>
-
-                            <div class="etiqueta-body">
-                                <div class="etiqueta-row">
-                                    <span class="label">GESTIÓN:</span>
-                                    <span class="value">{{ $activo->fecha_adquisicion ? $activo->fecha_adquisicion->format('Y') : date('Y') }}</span>
-                                </div>
-                                <div class="etiqueta-row">
-                                    <span class="label">CÓDIGO:</span>
-                                    <span class="value etiqueta-codigo">{{ $activo->codigo_activo }}</span>
-                                </div>
-                                <div class="etiqueta-row">
-                                    <span class="label">UNIDAD:</span>
-                                    <span class="value">{{ $activo->ambiente->nombre ?? 'TALLER' }}</span>
-                                </div>
-                                <div class="etiqueta-row">
-                                    <span class="label">ACTIVO:</span>
-                                    <span class="value etiqueta-nombre">{{ $activo->nombre }}</span>
-                                </div>
-                                <div class="etiqueta-row">
-                                    <span class="label">FUENTE:</span>
-                                    <span class="etiqueta-fuente">
-                                        {{ $activo->fuente->codigo ?? $activo->fuente->nombre ?? 'PSP' }}
-                                    </span>
-                                </div>
                             </div>
                         </div>
+                    </td>
 
-                        <div class="etiqueta-qr">
-                            @if($qrImage)
-                                <img src="{{ $qrImage }}" alt="QR">
-                            @else
-                                <div style="width:10mm;height:10mm;display:flex;align-items:center;justify-content:center;font-size:6px;font-weight:bold;color:#dc2626;background:white;border:0.8px solid #e2e8f0;border-radius:2px;">QR</div>
-                            @endif
-                            <div class="etiqueta-qr-label">ESCANEAR<br>PARA VERIFICAR</div>
-                        </div>
-                    </div>
-                </td>
-
-                @if ($i % 3 === 2 || $loop->last)
-                    </tr>
-                @endif
-            @endforeach
+                    @if ($i % 3 === 2 || $loop->last)
+                        </tr>
+                    @endif
+                @endforeach
+            @else
+                <tr>
+                    <td colspan="3" style="text-align: center; padding: 20px; font-weight: bold;">
+                        No hay activos registrados para imprimir.
+                    </td>
+                </tr>
+            @endif
         </table>
     </div>
 

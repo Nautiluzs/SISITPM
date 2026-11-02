@@ -31,40 +31,43 @@
 </section>
 
 <section class="panel" style="background: white; border-radius: 16px; padding: 24px; border: 1px solid #e2e8f0;">
-    <h2 style="margin-top: 0; font-size: 18px; font-weight: 800; color: #0f172a;">Listado de ambientes</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div>
+            <h2 style="margin:0; font-size: 18px; font-weight: 800; color: #0f172a;">Listado de ambientes</h2>
+            <p style="margin:4px 0 0;color:#64748b;font-size:12px;">Usa los botones para abrir, editar o eliminar cada ambiente.</p>
+        </div>
+    </div>
 
     @if($ambientes->count())
-        <div class="table-wrap" style="overflow-x: auto; margin-top: 15px;">
-            <table style="width:100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="background:#f8fafc; color:#64748b; font-size:11px; font-weight:800; text-transform:uppercase;">
-                        <th style="padding:10px; text-align:left;">Código</th>
-                        <th style="padding:10px; text-align:left;">Nombre</th>
-                        <th style="padding:10px; text-align:left;">Bloque</th>
-                        <th style="padding:10px; text-align:left;">Piso</th>
-                        <th style="padding:10px; text-align:center;">Activos</th>
-                        <th style="padding:10px; text-align:center;">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($ambientes as $amb)
-                        <tr style="border-bottom:1px solid #e2e8f0;">
-                            <td style="padding:10px;">{{ $amb->codigo }}</td>
-                            <td style="padding:10px; font-weight:700;">{{ $amb->nombre }}</td>
-                            <td style="padding:10px;">{{ $amb->bloque ?? '—' }}</td>
-                            <td style="padding:10px;">{{ $amb->piso ?? '—' }}</td>
-                            <td style="padding:10px; text-align:center;">{{ $amb->activos_count ?? 0 }}</td>
-                            <td style="padding:10px; text-align:center;">
-                                {{-- La ruta espera el id del ambiente --}}
-                                <a class="btn light" href="{{ route('ambientes.show', ['id' => $amb->id_ambiente]) }}"
-                                   style="padding:5px 12px;border-radius:8px;background:#eff6ff;color:#2563eb;text-decoration:none;font-weight:700;font-size:12px;">
-                                    Ver detalle
-                                </a>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+        <div class="folders-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;margin-top:18px;">
+            @foreach($ambientes as $amb)
+                <article class="folder-card" style="position:relative;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px;display:flex;flex-direction:column;justify-content:space-between;min-height:235px;transition:all .2s ease;">
+                    <span style="position:absolute;top:12px;left:12px;color:#000;font-size:18px;font-weight:900;">{{ $amb->id_ambiente }}</span>
+                    <div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:22px;margin-bottom:12px;">
+                            <span style="font-size:30px;">📂</span>
+                            <span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:800;padding:4px 8px;border-radius:6px;text-transform:uppercase;">Activa</span>
+                        </div>
+                        <span style="background:#eff6ff;color:#1d4ed8;padding:3px 7px;border-radius:5px;font-size:10px;font-weight:800;">{{ $amb->codigo ?? 'S/C' }}</span>
+                        <h3 style="font-size:15px;font-weight:800;color:#0f172a;margin:9px 0 5px;">{{ $amb->nombre }}</h3>
+                        <p style="font-size:11px;color:#64748b;margin:0 0 12px;">Bloque {{ $amb->bloque ?? 'N/A' }} · Piso {{ $amb->piso ?? 'N/D' }}</p>
+                        <div style="background:#f8fafc;border:1px solid #f1f5f9;border-radius:8px;padding:8px;font-size:11px;color:#475569;">
+                            <strong>📦 Activos registrados:</strong> {{ $amb->activos_count ?? 0 }}
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:6px;border-top:1px solid #f1f5f9;padding-top:10px;margin-top:14px;">
+                        <a href="{{ route('ambientes.show', ['id' => $amb->id_ambiente]) }}" style="flex:1;text-align:center;padding:8px 6px;border-radius:8px;background:#1e293b;color:#fff;text-decoration:none;font-size:11px;font-weight:800;">Ingresar</a>
+                        @if(auth()->check() && auth()->user()->esAdmin())
+                            <a href="{{ route('carreras.show', $carrera->id_carrera) }}?editar_ambiente={{ $amb->id_ambiente }}" style="flex:1;text-align:center;padding:8px 6px;border-radius:8px;background:#f59e0b;color:#111827;text-decoration:none;font-size:11px;font-weight:800;">Editar</a>
+                            <form method="POST" action="{{ route('ambientes.destroy', [$carrera->id_carrera, $amb->id_ambiente]) }}" style="flex:1;margin:0;" onsubmit="return confirm('¿Eliminar este ambiente?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" style="width:100%;padding:8px 6px;border:0;border-radius:8px;background:#ef0040;color:#fff;font-size:11px;font-weight:800;cursor:pointer;">Eliminar</button>
+                            </form>
+                        @endif
+                    </div>
+                </article>
+            @endforeach
         </div>
     @else
         <p style="text-align:center; color:#94a3b8; padding: 30px; font-weight:600;">No hay ambientes registrados.</p>

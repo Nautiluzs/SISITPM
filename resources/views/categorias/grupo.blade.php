@@ -38,11 +38,11 @@
 
                 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
                     @if (auth()->check() && auth()->user()->esAdmin() && isset($ambiente))
-                        <button type="button" onclick="openActivoModal()"
+                        <a href="{{ route('activos.create', ['id_ambiente' => $ambiente->id_ambiente, 'id_categoria' => $categoria->id_categoria]) }}"
                             style="background:#10b981;color:white;padding:10px 18px;border-radius:10px;font-weight:700;border:none;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;gap:6px;transition:all .2s;"
                             onmouseover="this.style.background='#059669';" onmouseout="this.style.background='#10b981';">
                             ➕ Nuevo Activo
-                        </button>
+                        </a>
                         <a href="{{ route('activos.etiquetas', ['id_categoria' => $categoria->id_categoria ?? '']) }}" target="_blank"
                             style="background:#7c3aed;color:white;padding:10px 18px;border-radius:10px;font-weight:700;border:none;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;gap:6px;transition:all .2s;text-decoration:none;"
                             onmouseover="this.style.background='#6b21a8';" onmouseout="this.style.background='#7c3aed';">
@@ -162,10 +162,10 @@
                                                 style="width:30px;height:30px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:13px;">👁️</a>
 
                                             @if (auth()->check() && auth()->user()->esAdmin())
-                                                <button type="button" onclick="openEditActivoModal({{ $a->id_activo }})" title="Editar"
+                                                <a href="{{ route('activos.edit', $a->id_activo) }}" title="Editar"
                                                     style="width:30px;height:30px;background:#fef9c3;color:#ca8a04;border:1px solid #fde047;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;">
                                                     ✏️
-                                                </button>
+                                                </a>
                                             @endif
 
                                             <a href="{{ route('activos.descargar_qr', $a->id_activo) }}" title="Descargar QR"
@@ -175,9 +175,8 @@
                                             <a href="{{ route('activos.etiqueta', $a->id_activo) }}" target="_blank" title="Etiqueta"
                                                 style="width:30px;height:30px;background:#fef3c7;color:#f59e0b;border:1px solid #fde68a;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:13px;">🏷️</a>
                                             @endif
-
                                             @if (auth()->check() && auth()->user()->esAdmin())
-                                            <a href="{{ route('actas.alta.pdf', $a->id_activo) }}" target="_blank" title="Acta de Alta"
+                                            <a href="{{ route('actas.recepcion.pdf', $a->id_activo) }}" target="_blank" title="Acta de Alta"
                                                 style="width:30px;height:30px;background:#d1fae5;color:#059669;border:1px solid #a7f3d0;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:13px;">📋</a>
                                             @endif
 
@@ -206,9 +205,12 @@
         </div>
     </div>
 
+    @endif
+
 {{-- ============================================================ --}}
 {{-- MODAL: NUEVO ACTIVO (DISEÑO MEJORADO)                        --}}
 {{-- ============================================================ --}}
+@if(false)
 <div id="activo-modal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.7); backdrop-filter:blur(6px); z-index:9999; justify-content:center; align-items:center; padding:16px;">
 
     <div style="background:#ffffff; border-radius:20px; width:100%; max-width:880px; max-height:94vh; display:flex; flex-direction:column; box-shadow:0 30px 60px -12px rgba(0,0,0,0.4); border:1px solid #e2e8f0; overflow:hidden; animation:modalSlideUp 0.25s ease-out;">
@@ -278,6 +280,7 @@
                     <h3 style="margin:0; font-size:17px; font-weight:800; color:#0f172a;">Registrar Nuevo Activo</h3>
                     <p style="margin:0; font-size:12px; color:#64748b; font-weight:500;">Complete los datos del bien para incorporarlo al inventario.</p>
                 </div>
+                @endif
             </div>
             <button type="button" onclick="closeActivoModal()" style="background:#f1f5f9; border:none; border-radius:10px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; color:#64748b; transition:all 0.2s; font-weight:700;" onmouseover="this.style.background='#e2e8f0'; this.style.color='#1e293b';" onmouseout="this.style.background='#f1f5f9'; this.style.color='#64748b';">✕</button>
         </div>
@@ -393,19 +396,7 @@
                 {{-- ⭐ CUSTODIO RESPONSABLE (DISEÑO MEJORADO) --}}
                 <div class="af-span-2">
                     <label class="af-label">👤 Custodio Responsable <span class="af-asterisco visible">*</span></label>
-                    <div style="display:flex;flex-direction:column;gap:8px;">
-                        <div style="display:flex;gap:10px;">
-                            <div style="flex:1;">
-                                <label style="font-size:10px;color:#64748b;font-weight:600;">Filtrar por Carrera</label>
-                                <select id="filtro-carrera-custodio" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #e2e8f0;background:#f8fafc;font-size:12px;">
-                                    <option value="">Todas las carreras</option>
-                                    @foreach($carreras as $cr)
-                                        <option value="{{ $cr->id_carrera }}">{{ $cr->nombre }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-                        <div class="custodio-wrapper">
+                    <div class="custodio-wrapper">
                             <input type="text" id="buscador-custodio-modal"
                                 class="custodio-search"
                                 placeholder="🔍 Buscar por Ítem, C.I. o Nombre..."
@@ -415,7 +406,6 @@
                                 <option value="">— Seleccione custodio del ambiente —</option>
                                 {{-- Custodios cargados por AJAX según el ambiente (ver cargarCustodiosModal) --}}
                             </select>
-                        </div>
                     </div>
                     <div class="af-error" data-for="crear-id-custodio"></div>
                     <div style="font-size:10px; color:#94a3b8; margin-top:6px; font-weight:600;">
@@ -488,6 +478,7 @@
     {{-- ============================================================ --}}
     {{-- MODAL: EDITAR ACTIVO --}}
     {{-- ============================================================ --}}
+    @if(false)
     <div id="edit-activo-modal"
         style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;justify-content:center;align-items:center;padding:20px;">
         <div style="background:white;border-radius:20px;padding:30px;width:100%;max-width:800px;max-height:90vh;overflow-y:auto;box-shadow:0 25px 50px -12px rgba(0,0,0,.25);">
@@ -497,6 +488,7 @@
                 <button type="button" onclick="closeEditActivoModal()"
                     style="background:#f1f5f9;border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;color:#475569;">×</button>
             </div>
+            @endif
 
             <form id="edit-activo-modal-form" method="POST" enctype="multipart/form-data" novalidate>
                 @csrf
@@ -763,15 +755,12 @@
 
         function filtrarCustodiosModal(texto) {
             const filtro = texto.toLowerCase().trim();
-            const carreraFiltro = document.getElementById('filtro-carrera-custodio')?.value || '';
             const select = document.getElementById('crear-id-custodio');
             for (let i = 0; i < select.options.length; i++) {
                 const opt = select.options[i];
                 const busqueda = opt.getAttribute('data-busqueda') || "";
-                const carreraOpt = opt.getAttribute('data-carrera') || "";
                 const coincideTexto = busqueda.includes(filtro);
-                const coincideCarrera = !carreraFiltro || carreraOpt === carreraFiltro;
-                opt.style.display = (coincideTexto && coincideCarrera) ? "" : "none";
+                opt.style.display = coincideTexto ? "" : "none";
             }
         }
 
@@ -994,16 +983,42 @@
                 });
                 const data = await res.json();
                 select.innerHTML = '<option value="">— Seleccione custodio del ambiente —</option>';
+                let grupoActual = null;
                 (data || []).forEach(c => {
+                    const grupo = c.asignado_en_ambiente ? 'ambiente' : 'otros';
+                    if (grupo !== grupoActual) {
+                        const encabezado = document.createElement('option');
+                        encabezado.textContent = grupo === 'ambiente'
+                            ? '── Custodios asignados en este ambiente ──'
+                            : '── Otros usuarios activos ──';
+                        encabezado.disabled = true;
+                        select.appendChild(encabezado);
+                        grupoActual = grupo;
+                    }
                     const opt = document.createElement('option');
                     opt.value = c.id;
-                    opt.textContent = c.texto;
+                    opt.textContent = `${String(c.id) === String(idCustodioSeleccionado) ? '✓ ' : ''}${c.texto}${c.asignado_en_ambiente ? ' · Asignado aquí' : ''}`;
                     opt.setAttribute('data-busqueda', c.busqueda || '');
+                    if (String(c.id) === String(idCustodioSeleccionado)) {
+                        opt.selected = true;
+                        opt.style.backgroundColor = '#dcfce7';
+                        opt.style.color = '#166534';
+                    }
                     select.appendChild(opt);
                 });
                 if (idCustodioSeleccionado) {
                     select.value = idCustodioSeleccionado;
                 }
+                select.addEventListener('change', () => {
+                    Array.from(select.options).forEach(opt => {
+                        if (!opt.value) return;
+                        const marcado = opt.value === select.value;
+                        const texto = opt.textContent.replace(/^✓\s*/, '');
+                        opt.textContent = marcado ? `✓ ${texto}` : texto;
+                        opt.style.backgroundColor = marcado ? '#dcfce7' : '';
+                        opt.style.color = marcado ? '#166534' : '';
+                    });
+                }, { once: true });
             } catch (e) {
                 console.error(e);
                 select.innerHTML = '<option value="">— Error al cargar custodios —</option>';
@@ -1172,9 +1187,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             cambiarTipoBien('ACTIVO_FIJO');
             cambiarTipoBienEdit('ACTIVO_FIJO');
-            document.getElementById('filtro-carrera-custodio')?.addEventListener('change', function() {
-                filtrarCustodiosModal(document.getElementById('buscador-custodio-modal')?.value || '');
-            });
         });
     </script>
 @endsection

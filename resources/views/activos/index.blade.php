@@ -14,11 +14,11 @@
 
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
             @if (auth()->check() && auth()->user()->esAdmin())
-                <button type="button" onclick="openActivoModal()"
-                    style="background:#10b981;color:white;padding:10px 18px;border-radius:10px;font-weight:700;border:none;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;gap:6px;transition:all .2s;"
+                <a href="{{ route('activos.create') }}"
+                    style="background:#10b981;color:white;padding:10px 18px;border-radius:10px;font-weight:700;border:none;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;gap:6px;transition:all .2s;text-decoration:none;"
                     onmouseover="this.style.background='#059669';" onmouseout="this.style.background='#10b981';">
                     ➕ Nuevo Activo
-                </button>
+                </a>
                 <a href="{{ route('activos.etiquetas') }}" target="_blank"
                     style="background:#7c3aed;color:white;padding:10px 18px;border-radius:10px;font-weight:700;border:none;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;gap:6px;transition:all .2s;text-decoration:none;"
                     onmouseover="this.style.background='#6b21a8';" onmouseout="this.style.background='#7c3aed';">
@@ -100,6 +100,18 @@
                 <h3 style="font-size:18px;font-weight:800;color:#0f172a;margin:0;">
                     📦 Activos individuales (<span id="total-activos">{{ $activos->count() }}</span>)
                 </h3>
+                @if (auth()->check() && auth()->user()->esAdmin())
+                    <form id="bulk-delete-form" method="POST" action="{{ route('activos.destroyMany') }}" onsubmit="return prepararEliminacionMasiva(event);" style="margin:0;">
+                        @csrf
+                        @method('DELETE')
+                        <div id="bulk-delete-inputs"></div>
+                    </form>
+                    <button type="button" id="bulk-delete-button" disabled
+                        onclick="enviarEliminacionMasiva()"
+                        style="padding:9px 14px;background:#dc2626;color:#fff;border:0;border-radius:8px;font-weight:800;cursor:pointer;opacity:.5;">
+                        🗑️ Eliminar seleccionados
+                    </button>
+                @endif
             </div>
 
             @if ($activos->count() > 0)
@@ -107,7 +119,13 @@
                     <table style="width:100%;border-collapse:collapse;font-size:13px;vertical-align:middle;">
                         <thead>
                             <tr style="background:#f1f5f9;color:#475569;text-transform:uppercase;font-size:11px;font-weight:800;">
-                                <th style="padding:14px 10px;text-align:center;width:45px;">Nº</th>
+                                <th style="padding:14px 10px;text-align:center;width:45px;">
+                                    @if (auth()->check() && auth()->user()->esAdmin())
+                                        <input type="checkbox" id="select-all-activos" title="Seleccionar todos"
+                                            onchange="seleccionarTodosActivos(this.checked)">
+                                    @endif
+                                    Nº
+                                </th>
                                 <th style="padding:14px 10px;text-align:center;width:65px;">QR</th>
                                 <th style="padding:14px 10px;text-align:center;width:65px;">IMAGEN</th>
                                 <th style="padding:14px 10px;text-align:left;">CÓDIGO</th>
@@ -122,7 +140,13 @@
                         <tbody id="activos-tbody">
                             @foreach ($activos as $i => $a)
                                 <tr style="border-bottom:1px solid #e2e8f0;">
-                                    <td style="padding:12px 10px;text-align:center;color:#64748b;font-weight:800;">{{ $i + 1 }}</td>
+                                    <td style="padding:12px 10px;text-align:center;color:#64748b;font-weight:800;">
+                                        @if (auth()->check() && auth()->user()->esAdmin())
+                                            <input type="checkbox" value="{{ $a->id_activo }}" class="activo-checkbox"
+                                                onchange="actualizarBotonEliminacion()">
+                                        @endif
+                                        {{ $i + 1 }}
+                                    </td>
                                     <td style="padding:12px 10px;text-align:center;">
                                         @if ($a->ruta_qr)
                                             <img src="{{ asset('storage/' . $a->ruta_qr) }}" alt="QR"
@@ -183,10 +207,10 @@
                                                 style="width:30px;height:30px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:13px;">👁️</a>
 
                                             @if (auth()->check() && auth()->user()->esAdmin())
-                                                <button type="button" onclick="openEditActivoModal({{ $a->id_activo }})" title="Editar"
+                                                <a href="{{ route('activos.edit', $a->id_activo) }}" title="Editar"
                                                     style="width:30px;height:30px;background:#fef9c3;color:#ca8a04;border:1px solid #fde047;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;">
                                                     ✏️
-                                                </button>
+                                                </a>
                                             @endif
 
                                             <a href="{{ route('activos.descargar_qr', $a->id_activo) }}" title="Descargar QR"
@@ -196,12 +220,10 @@
                                             <a href="{{ route('activos.etiqueta', $a->id_activo) }}" target="_blank" title="Etiqueta"
                                                 style="width:30px;height:30px;background:#fef3c7;color:#f59e0b;border:1px solid #fde68a;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:13px;">🏷️</a>
                                             @endif
-
                                             @if (auth()->check() && auth()->user()->esAdmin())
-                                            <a href="{{ route('actas.alta.pdf', $a->id_activo) }}" target="_blank" title="Acta de Alta"
+                                            <a href="{{ route('actas.recepcion.pdf', $a->id_activo) }}" target="_blank" title="Acta de Alta"
                                                 style="width:30px;height:30px;background:#d1fae5;color:#059669;border:1px solid #a7f3d0;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:13px;">📋</a>
                                             @endif
-
                                             @if (auth()->check() && auth()->user()->esAdmin())
                                                 <button type="button"
                                                     onclick="confirmarEliminarActivo({{ $a->id_activo }}, '{{ addslashes($a->codigo_activo) }}', '{{ addslashes($a->nombre) }}')"
@@ -255,6 +277,11 @@
                 document.getElementById('edit-valor-adquisicion').value = data.valor_adquisicion || 0;
                 document.getElementById('edit-descripcion').value = data.descripcion || '';
                 document.getElementById('edit-select-tipo-bien').value = data.tipo_bien || 'ACTIVO_FIJO';
+                document.getElementById('edit-rv-si').checked = data.rv === 'SI';
+                document.getElementById('edit-rv-no').checked = data.rv !== 'SI';
+
+                cambiarTipoBienEdit(data.tipo_bien || 'ACTIVO_FIJO');
+                setRvEdit(data.rv === 'SI' ? 'SI' : 'NO');
 
                 cambiarTipoBienEdit(data.tipo_bien || 'ACTIVO_FIJO');
                 limpiarTodosLosErrores();
@@ -266,6 +293,89 @@
         }
 
         function cambiarTipoBienEdit(tipo) { aplicarTipoBien(tipo, 'edit'); }
+
+        function setRvEdit(valor) {
+            const si = document.getElementById('rv-si-label');
+            const no = document.getElementById('rv-no-label');
+            if (!si || !no) return;
+            si.classList.remove('selected');
+            no.classList.remove('selected');
+            si.style.borderColor = '#cbd5e1';
+            no.style.borderColor = '#cbd5e1';
+            si.style.background = '#fff';
+            no.style.background = '#fff';
+            if (valor === 'SI') {
+                si.classList.add('selected');
+                si.style.borderColor = '#16a34a';
+                si.style.background = '#dcfce7';
+            } else {
+                no.classList.add('selected');
+                no.style.borderColor = '#dc2626';
+                no.style.background = '#fee2e2';
+            }
+        }
+
+        function actualizarBotonEliminacion() {
+            const seleccionados = document.querySelectorAll('.activo-checkbox:checked').length;
+            const button = document.getElementById('bulk-delete-button');
+            const selectAll = document.getElementById('select-all-activos');
+            const total = document.querySelectorAll('.activo-checkbox').length;
+
+            if (button) {
+                button.disabled = seleccionados === 0;
+                button.style.opacity = seleccionados === 0 ? '0.5' : '1';
+                button.style.cursor = seleccionados === 0 ? 'not-allowed' : 'pointer';
+            }
+
+            if (selectAll) {
+                selectAll.checked = total > 0 && seleccionados === total;
+                selectAll.indeterminate = seleccionados > 0 && seleccionados < total;
+            }
+        }
+
+        function seleccionarTodosActivos(seleccionar) {
+            document.querySelectorAll('.activo-checkbox').forEach((checkbox) => {
+                checkbox.checked = seleccionar;
+            });
+            actualizarBotonEliminacion();
+        }
+
+        document.addEventListener('DOMContentLoaded', actualizarBotonEliminacion);
+
+        function prepararEliminacionMasiva(event) {
+            const seleccionados = Array.from(document.querySelectorAll('.activo-checkbox:checked'));
+            if (seleccionados.length === 0) {
+                event.preventDefault();
+                alert('Seleccione al menos un activo.');
+                return false;
+            }
+
+            return confirm('¿Eliminar los activos seleccionados? Esta acción no se puede deshacer.');
+        }
+
+        function enviarEliminacionMasiva() {
+            const seleccionados = Array.from(document.querySelectorAll('.activo-checkbox:checked'));
+            if (seleccionados.length === 0) {
+                alert('Seleccione al menos un activo.');
+                return;
+            }
+
+            if (!confirm('¿Eliminar los activos seleccionados? Esta acción no se puede deshacer.')) {
+                return;
+            }
+
+            const contenedor = document.getElementById('bulk-delete-inputs');
+            contenedor.innerHTML = '';
+            seleccionados.forEach((checkbox) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'activos[]';
+                input.value = checkbox.value;
+                contenedor.appendChild(input);
+            });
+
+            document.getElementById('bulk-delete-form').submit();
+        }
     </script>
 
 @endsection

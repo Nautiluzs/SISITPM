@@ -163,14 +163,48 @@
         </form>
     </div>
 
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;">
+        <button type="button" id="reenviar-seleccionados" style="background:#2563eb;color:#fff;border:0;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer;">
+            📧 Reenviar a seleccionados
+        </button>
+        <form method="POST" action="{{ route('usuarios.reenviar_credenciales_todos') }}" id="form-reenviar-todos" style="margin:0;">
+            @csrf
+            <button type="submit" style="background:#0f766e;color:#fff;border:0;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer;">
+                📧 Reenviar a todos
+            </button>
+        </form>
+        <button type="button" id="eliminar-seleccionados" style="background:#dc2626;color:#fff;border:0;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer;">
+            🗑️ Eliminar seleccionados
+        </button>
+        <form method="POST" action="{{ route('usuarios.reenviar_credenciales_seleccionados') }}" id="form-reenviar-seleccionados" style="display:none;">
+            @csrf
+            <div class="bulk-usuarios-inputs"></div>
+        </form>
+        <form method="POST" action="{{ route('usuarios.destroy_seleccionados') }}" id="form-eliminar-seleccionados" style="display:none;">
+            @csrf
+            <div class="bulk-usuarios-inputs"></div>
+        </form>
+    </div>
+
     {{-- TABLA --}}
     <div style="background:white;border-radius:16px;border:1px solid #e2e8f0;padding:20px;box-shadow:0 4px 6px -1px rgba(0,0,0,.05);">
         <div style="overflow-x:auto;">
             <table style="width:100%;border-collapse:collapse;font-size:13px;">
                 <thead>
                     <tr style="background:#f1f5f9;color:#334155;text-transform:uppercase;font-size:11px;">
+                        <th style="padding:10px;text-align:center;"><input type="checkbox" id="seleccionar-todos-usuarios" aria-label="Seleccionar todos"></th>
+                        <th style="padding:10px;text-align:left;">Ítems</th>
                         <th style="padding:10px;text-align:left;">C.I.</th>
-                        <th style="padding:10px;text-align:left;">Nombre</th>
+                        <th style="padding:10px;text-align:left;">
+                            <a href="{{ route('usuarios.index', array_merge(request()->query(), ['orden_nombre' => ($ordenNombre ?? 'asc') === 'asc' ? 'desc' : 'asc'])) }}"
+                               style="color:#334155;text-decoration:none;display:inline-flex;align-items:center;gap:6px;"
+                               title="Ordenar nombres alfabéticamente">
+                                Nombre
+                                <span style="font-size:15px;color:#2563eb;">
+                                    {{ ($ordenNombre ?? 'asc') === 'asc' ? '↑ A-Z' : '↓ Z-A' }}
+                                </span>
+                            </a>
+                        </th>
                         <th style="padding:10px;text-align:left;">Rol</th>
                         <th style="padding:10px;text-align:left;">Carrera</th>
                         <th style="padding:10px;text-align:center;">Estado</th>
@@ -181,6 +215,16 @@
                 <tbody>
                     @forelse($usuarios as $u)
                         <tr style="border-bottom:1px solid #e2e8f0;">
+                            <td style="padding:10px;text-align:center;"><input type="checkbox" class="usuario-checkbox" value="{{ $u->id_usuario }}"></td>
+                            <td style="padding:10px;">
+                                @forelse($u->items as $item)
+                                    <span style="display:inline-block;background:#ecfeff;color:#155e75;border:1px solid #a5f3fc;border-radius:6px;padding:3px 7px;margin:2px;font-size:11px;font-weight:700;">
+                                        {{ $item->numero_item }}
+                                    </span>
+                                @empty
+                                    <span style="color:#94a3b8;font-size:12px;">Sin ítem asignado</span>
+                                @endforelse
+                            </td>
                             <td style="padding:10px;font-weight:600;">{{ $u->ci }}</td>
                             <td style="padding:10px;">
                                 <div style="font-weight:700;color:#0f172a;">{{ $u->nombre_completo }}</div>
@@ -307,7 +351,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" style="padding:20px;text-align:center;color:#94a3b8;">No hay usuarios registrados.</td></tr>
+                        <tr><td colspan="9" style="padding:20px;text-align:center;color:#94a3b8;">No hay usuarios registrados.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -317,6 +361,88 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const seleccionarTodos = document.getElementById('seleccionar-todos-usuarios');
+        const seleccionarUsuarios = () => Array.from(document.querySelectorAll('.usuario-checkbox:checked')).map(input => input.value);
+
+        seleccionarTodos?.addEventListener('change', function() {
+            document.querySelectorAll('.usuario-checkbox').forEach(input => {
+                input.checked = this.checked;
+            });
+        });
+
+        const enviarSeleccionados = document.getElementById('reenviar-seleccionados');
+        const eliminarSeleccionados = document.getElementById('eliminar-seleccionados');
+
+        const enviarFormularioMasivo = (formulario, titulo, texto, confirmButtonText) => {
+            const ids = seleccionarUsuarios();
+            if (ids.length === 0) {
+                Swal.fire('Selecciona usuarios', 'Debes marcar al menos un usuario.', 'info');
+                return;
+            }
+
+            const contenedor = formulario.querySelector('.bulk-usuarios-inputs');
+            contenedor.innerHTML = '';
+            ids.forEach(id => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'usuarios[]';
+                input.value = id;
+                contenedor.appendChild(input);
+            });
+
+            Swal.fire({
+                title: titulo,
+                text: texto,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: formulario.id === 'form-eliminar-seleccionados' ? '#dc2626' : '#2563eb',
+                cancelButtonColor: '#64748b',
+                confirmButtonText,
+                cancelButtonText: 'Cancelar',
+                reverseButtons: true
+            }).then(result => {
+                if (result.isConfirmed) {
+                    formulario.submit();
+                }
+            });
+        };
+
+        enviarSeleccionados.addEventListener('click', function() {
+            enviarFormularioMasivo(
+                document.getElementById('form-reenviar-seleccionados'),
+                '¿Reenviar credenciales?',
+                'Se generará una nueva contraseña temporal para cada usuario seleccionado y se enviará a su correo.',
+                'Sí, reenviar'
+            );
+        });
+
+        eliminarSeleccionados.addEventListener('click', function() {
+            enviarFormularioMasivo(
+                document.getElementById('form-eliminar-seleccionados'),
+                '¿Eliminar usuarios seleccionados?',
+                'No se eliminarán tu cuenta ni usuarios que todavía tengan activos asignados.',
+                'Sí, eliminar'
+            );
+        });
+
+        document.getElementById('form-reenviar-todos').addEventListener('submit', function(e) {
+            e.preventDefault();
+            Swal.fire({
+                title: '¿Reenviar a todos?',
+                text: 'Se generará una nueva contraseña temporal para todos los usuarios que tengan correo.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#0f766e',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Sí, reenviar a todos',
+                cancelButtonText: 'Cancelar',
+                reverseButtons: true
+            }).then(result => {
+                if (result.isConfirmed) {
+                    this.submit();
+                }
+            });
+        });
 
         // ⭐ Reenviar credenciales
         document.querySelectorAll('.form-reenviar').forEach(form => {

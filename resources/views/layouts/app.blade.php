@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 
 <head>
@@ -9,6 +9,13 @@
     <meta name="theme-color" content="#2563eb">
     <link rel="manifest" href="/manifest.json">
     <title>@yield('title', 'SISActivos') - Sistema de Control y Gestión</title>
+    <script>
+        if (localStorage.getItem('sisactivos-theme') === 'dark') {
+            document.documentElement.classList.add('dark');
+        }
+        document.documentElement.dataset.fontSize = localStorage.getItem('sisactivos-font-size') || 'normal';
+        document.documentElement.dataset.colorTheme = localStorage.getItem('sisactivos-color-theme') || 'default';
+    </script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     {{-- Cola local: permite escanear y registrar sin conexión --}}
@@ -29,11 +36,76 @@
             --text-muted: #8fa0b5;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Plus Jakarta Sans', sans-serif;
+        html[data-font-size="small"] {
+            font-size: 14px;
+        }
+
+        html[data-font-size="normal"] {
+            font-size: 16px;
+        }
+
+        html[data-font-size="large"] {
+            font-size: 18px;
+        }
+
+        html[data-font-size="small"] body {
+            zoom: 0.9;
+        }
+
+        html[data-font-size="large"] body {
+            zoom: 1.125;
+        }
+
+        html[data-color-theme="blue-red"] {
+            --sidebar-bg: #0b1f4d;
+            --sidebar-hover: #173b78;
+            --sidebar-active: #dc2626;
+        }
+
+        html[data-color-theme="blue-red"] .brand-icon,
+        html[data-color-theme="blue-red"] [class~="bg-blue-600"],
+        html[data-color-theme="blue-red"] [style*="background: #2563eb"],
+        html[data-color-theme="blue-red"] [style*="background:#2563eb"] {
+            background-color: #dc2626 !important;
+        }
+
+        html[data-color-theme="blue-red"] .hero-card {
+            background: linear-gradient(135deg, #123b8f 0%, #dc2626 100%) !important;
+            box-shadow: 0 10px 15px -3px rgba(220, 38, 38, 0.25) !important;
+        }
+
+        html[data-color-theme="blue-red"] .folder-card:hover {
+            border-color: #dc2626 !important;
+            box-shadow: 0 10px 15px -3px rgba(220, 38, 38, 0.16) !important;
+        }
+
+        html[data-color-theme="blue-red"] .panel button[style*="background: #2563eb"],
+        html[data-color-theme="blue-red"] .panel button[style*="background:#2563eb"] {
+            background-color: #dc2626 !important;
+        }
+
+        html[data-color-theme="blue-red"] a[style*="background:#2563eb"],
+        html[data-color-theme="blue-red"] a[style*="background: #2563eb"] {
+            background-color: #dc2626 !important;
+        }
+
+        html[data-color-theme="blue-red"] [class~="border-blue-500"],
+        html[data-color-theme="blue-red"] [class~="hover:border-blue-500"]:hover {
+            border-color: #dc2626 !important;
+        }
+
+        html[data-color-theme="blue-red"] [class~="text-blue-600"],
+        html[data-color-theme="blue-red"] [class~="text-blue-700"] {
+            color: #b91c1c !important;
+        }
+
+        @layer base {
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+                font-family: 'Plus Jakarta Sans', sans-serif;
+            }
         }
 
         html,
@@ -296,6 +368,57 @@
     </style>
 
     @stack('styles')
+
+    {{-- Tema oscuro opcional --}}
+    <style>
+        html.dark {
+            color-scheme: dark;
+        }
+        html.dark body {
+            background-color: #0f172a !important;
+            color: #e2e8f0 !important;
+        }
+        html.dark .main-wrapper {
+            background-color: #0f172a !important;
+        }
+        html.dark .panel,
+        html.dark [style*="background: white"],
+        html.dark [style*="background:white"],
+        html.dark [style*="background: #ffffff"],
+        html.dark [style*="background:#ffffff"] {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+        }
+        html.dark [style*="color: #0f172a"],
+        html.dark [style*="color:#0f172a"],
+        html.dark [style*="color: #334155"],
+        html.dark [style*="color:#334155"],
+        html.dark [style*="color: #475569"],
+        html.dark [style*="color:#475569"],
+        html.dark [style*="color: #64748b"],
+        html.dark [style*="color:#64748b"],
+        html.dark [style*="color: #1e293b"],
+        html.dark [style*="color:#1e293b"] {
+            color: #e2e8f0 !important;
+        }
+        html.dark .content-area [class*="text-slate-"] {
+            color: #e2e8f0 !important;
+        }
+        html.dark input, html.dark select, html.dark textarea {
+            background-color: #0f172a !important;
+            color: #e2e8f0 !important;
+            border-color: #475569 !important;
+        }
+        html.dark table thead tr,
+        html.dark [style*="background:#f8fafc"],
+        html.dark [style*="background: #f8fafc"] {
+            background-color: #334155 !important;
+        }
+        html.dark .top-navbar {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+        }
+    </style>
 </head>
 
 <body>
@@ -329,6 +452,18 @@
                 </svg>
                 Inicio
             </a>
+
+            @if($__user->esAdmin())
+                <a href="{{ route('carreras.index') }}" class="nav-item {{ request()->routeIs('carreras.*') ? 'active' : '' }}">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 14l9-5-9-5-9 5 9 5z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                    </svg>
+                    Carreras
+                </a>
+            @endif
 
             {{-- CARRERAS --}}
             <div class="menu-category">CARRERAS</div>
@@ -463,13 +598,15 @@
                 Activos de Baja
             </a>
 
-            <a href="{{ route('items.index') }}" class="nav-item {{ request()->routeIs('items.*') ? 'active' : '' }}">
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                </svg>
-                Ítems
-            </a>
+            @if ($__user->esAdmin())
+                <a href="{{ route('items.index') }}" class="nav-item {{ request()->routeIs('items.*') ? 'active' : '' }}">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                    Personal Asignado
+                </a>
+            @endif
 
             @if ($__user->esAdmin() || $__user->esOperativo() || $__user->esJefeCarrera() || $__user->esCustodio())
                 <a href="{{ route('reportes.index') }}"
@@ -479,17 +616,6 @@
                             d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     Reportes
-                </a>
-            @endif
-
-            @if ($__user->esAdmin() || $__user->esOperativo() || $__user->esJefeCarrera())
-                <a href="{{ route('actas.liberacion.index') }}"
-                    class="nav-item {{ request()->routeIs('actas.liberacion.*') ? 'active' : '' }}">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Liberación
                 </a>
             @endif
 
@@ -505,19 +631,20 @@
                     </svg>
                     Copias de Seguridad
                 </a>
-
-                <a href="{{ route('configuracion.index') }}"
-                    class="nav-item {{ request()->routeIs('configuracion.*') ? 'active' : '' }}">
+<a href="{{ route('activos.importar.form') }}" class="nav-item {{ request()->routeIs('activos.importar.*') ? 'active' : '' }}">
+    <span>📂</span> Importar desde Excel/CSV
+</a>
+                <a href="{{ route('manual.index') }}" class="nav-item {{ request()->routeIs('manual.*') ? 'active' : '' }}">
                     <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
-                    Configuración
-                </a>
-                <a href="{{ route('manual.index') }}" class="nav-item {{ request()->routeIs('manual.*') ? 'active' : '' }}">
                     Manual de Usuario
+                </a>
+                <a href="{{ route('configuracion.index') }}" class="nav-item {{ request()->routeIs('configuracion.*') ? 'active' : '' }}">
+                    ⚙️ Configuraciones
                 </a>
             @endif
 
@@ -581,19 +708,25 @@
                 </form>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 16px;">
-                @auth
-                    @if (auth()->user()->esAdmin())
-                        <a href="{{ route('usuarios.index') }}" title="Gestión de Usuarios"
-                            style="width: 42px; height: 42px; background-color: #eff6ff; color: #2563eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 18px; box-shadow: 0 2px 5px rgba(37, 99, 235, 0.15); transition: all 0.2s ease;"
-                            onmouseover="this.style.backgroundColor='#2563eb'; this.style.color='#fff';"
-                            onmouseout="this.style.backgroundColor='#eff6ff'; this.style.color='#2563eb';">
-                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
-                        </a>
-                    @endif
+            @auth
+                <div class="top-user-area" style="display:flex;align-items:center;gap:12px;flex-shrink:0;">
+                    <div class="top-user-actions" style="display:flex;align-items:center;gap:8px;">
+                        <button type="button" id="theme-toggle" title="Cambiar modo claro u oscuro"
+                            style="width: 42px; height: 42px; background-color: #eff6ff; color: #2563eb; border: 1px solid #dbeafe; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer;">
+                            <span id="theme-toggle-icon" aria-hidden="true">🌙</span>
+                        </button>
+                        @if (auth()->user()->esAdmin())
+                            <a href="{{ route('usuarios.index') }}" title="Gestión de Usuarios"
+                                style="width: 42px; height: 42px; background-color: #eff6ff; color: #2563eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 18px; box-shadow: 0 2px 5px rgba(37, 99, 235, 0.15); transition: all 0.2s ease;"
+                                onmouseover="this.style.backgroundColor='#2563eb'; this.style.color='#fff';"
+                                onmouseout="this.style.backgroundColor='#eff6ff'; this.style.color='#2563eb';">
+                                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                            </a>
+                        @endif
+                    </div>
 
                     <div style="text-align: right; border-left: 1px solid #e2e8f0; padding-left: 16px;">
                         <span
@@ -604,8 +737,8 @@
                             {{ auth()->user()->rol }}
                         </span>
                     </div>
+                </div>
                 @endauth
-            </div>
         </header>
 
         <main class="content-area">
@@ -752,6 +885,22 @@
         // SWEET ALERT - Mensajes de sesión
         // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = document.getElementById('theme-toggle-icon');
+
+            function updateThemeButton() {
+                const dark = document.documentElement.classList.contains('dark');
+                if (themeIcon) themeIcon.textContent = dark ? '☀️' : '🌙';
+                if (themeToggle) themeToggle.title = dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
+            }
+
+            updateThemeButton();
+            themeToggle?.addEventListener('click', function() {
+                const dark = document.documentElement.classList.toggle('dark');
+                localStorage.setItem('sisactivos-theme', dark ? 'dark' : 'light');
+                updateThemeButton();
+            });
+
             @if (session('status'))
                 Swal.fire({
                     icon: 'success',
@@ -904,6 +1053,6 @@
             })();
         @endif
     </script>
-</body>
 
+</body>
 </html>

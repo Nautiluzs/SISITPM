@@ -7,25 +7,31 @@ use App\Models\Carrera;
 use App\Models\HistorialTitular;
 use App\Models\Item;
 use App\Models\User;
+use App\Models\VerificacionFisica;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class UsuarioController extends Controller
 {
     public function index(Request $request)
-{
-    abort_if(Auth::user()->rol !== 'ADMINISTRADOR', 403, 'Acceso denegado');
+    {
+        abort_if(Auth::user()->rol !== 'ADMINISTRADOR', 403, 'Acceso denegado');
 
-    $query = User::with('carrera');
+        $ordenNombre = $request->input('orden_nombre', 'asc');
+        if (! in_array($ordenNombre, ['asc', 'desc'], true)) {
+            $ordenNombre = 'asc';
+        }
 
-    // Filtro por rol
-    if ($request->filled('rol') && $request->rol !== 'Todos') {
-        $query->where('rol', $request->rol);
-    }
+        $query = User::with(['carrera', 'items']);
+
+        // Filtro por rol
+        if ($request->filled('rol') && $request->rol !== 'Todos') {
+            $query->where('rol', $request->rol);
+        }
 
         // ⭐ Búsqueda estricta por nombre, CI, email o número de ítem
         if ($request->filled('buscar')) {
@@ -33,33 +39,36 @@ class UsuarioController extends Controller
 
             $query->where(function ($q) use ($s) {
                 $q->where('nombre_completo', 'like', "%{$s}%")
-                  ->orWhere('ci', 'like', "%{$s}%")
-                  ->orWhere('email', 'like', "%{$s}%")
-                  ->orWhereHas('items', function ($iq) use ($s) {
-                      $iq->where('numero_item', 'like', "%{$s}%");
-                  });
+                    ->orWhere('ci', 'like', "%{$s}%")
+                    ->orWhere('email', 'like', "%{$s}%")
+                    ->orWhereHas('items', function ($iq) use ($s) {
+                        $iq->where('numero_item', 'like', "%{$s}%");
+                    });
             });
         }
 
-    return view('usuarios.index', [
-        'usuarios' => $query->orderBy('nombre_completo')->get(),
-        'carreras' => Carrera::orderBy('nombre')->get(),
-    ]);
-}
+        return view('usuarios.index', [
+            'usuarios' => $query
+                ->orderBy('nombre_completo', $ordenNombre)
+                ->get(),
+            'carreras' => Carrera::orderBy('nombre')->get(),
+            'ordenNombre' => $ordenNombre,
+        ]);
+    }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'ci'              => 'required|string|max:20|unique:usuarios,ci',
+            'ci' => 'required|string|max:20|unique:usuarios,ci',
             'nombre_completo' => 'required|string|max:255',
-            'email'           => 'required|email|max:255|unique:usuarios,email',
-            'rol'             => ['required', 'string', Rule::in(array_keys(User::ROLES))],
-            'cargo'           => 'required|string|max:100',
-            'unidad'          => 'required|string|max:100',
-            'carrera_id'      => 'nullable|exists:carreras,id_carrera',
+            'email' => 'required|email|max:255|unique:usuarios,email',
+            'rol' => ['required', 'string', Rule::in(array_keys(User::ROLES))],
+            'cargo' => 'required|string|max:100',
+            'unidad' => 'required|string|max:100',
+            'carrera_id' => 'nullable|exists:carreras,id_carrera',
             'puede_verificar' => 'nullable|boolean',
-            'items'           => 'nullable|array',
-            'items.*'         => 'nullable|string|max:20',
+            'items' => 'nullable|array',
+            'items.*' => 'nullable|string|max:20',
         ], [
             'rol.in' => 'El rol seleccionado no es válido.',
         ]);
@@ -68,19 +77,19 @@ class UsuarioController extends Controller
         $partes = explode(' ', trim($request->nombre_completo));
         $primerNombre = $partes[0] ?? 'usu';
         $apellido = $partes[1] ?? 'sis';
-        $base = strtolower(substr($primerNombre, 0, 3) . substr($apellido, 0, 3));
-        $passwordGenerada = $base . rand(100, 999);
+        $base = strtolower(substr($primerNombre, 0, 3).substr($apellido, 0, 3));
+        $passwordGenerada = $base.rand(100, 999);
 
         $usuario = User::create([
-            'ci'              => $request->ci,
-            'email'           => $request->email,
+            'ci' => $request->ci,
+            'email' => $request->email,
             'nombre_completo' => $request->nombre_completo,
-            'cargo'           => $request->cargo,
-            'unidad'          => $request->unidad,
-            'password'        => Hash::make($passwordGenerada),
-            'rol'             => $data['rol'],
-            'id_carrera'      => $request->carrera_id,
-            'estado'          => 'ACTIVO',
+            'cargo' => $request->cargo,
+            'unidad' => $request->unidad,
+            'password' => Hash::make($passwordGenerada),
+            'rol' => $data['rol'],
+            'id_carrera' => $request->carrera_id,
+            'estado' => 'ACTIVO',
             'puede_verificar' => $request->boolean('puede_verificar'),
         ]);
 
@@ -88,7 +97,7 @@ class UsuarioController extends Controller
 
         // Enviar email
         try {
-            if (!empty($usuario->email)) {
+            if (! empty($usuario->email)) {
                 Mail::raw("Hola {$usuario->nombre_completo},\n\nTu contraseña temporal: {$passwordGenerada}", function ($m) use ($usuario) {
                     $m->to($usuario->email)->subject('Credenciales - SISActivos');
                 });
@@ -108,20 +117,20 @@ class UsuarioController extends Controller
 
         $request->validate([
             'nombre_completo' => 'required|string|max:255',
-            'ci'              => ['required', 'string', 'max:20', Rule::unique('usuarios', 'ci')->ignore($usuario->id_usuario, 'id_usuario')],
-            'email'           => ['required', 'email', Rule::unique('usuarios', 'email')->ignore($usuario->id_usuario, 'id_usuario')],
-            'cargo'           => 'required|string',
-            'unidad'          => 'required|string',
-            'rol'             => ['required', 'string', Rule::in(array_keys(User::ROLES))],
-            'carrera_id'      => 'nullable|exists:carreras,id_carrera',
+            'ci' => ['required', 'string', 'max:20', Rule::unique('usuarios', 'ci')->ignore($usuario->id_usuario, 'id_usuario')],
+            'email' => ['required', 'email', Rule::unique('usuarios', 'email')->ignore($usuario->id_usuario, 'id_usuario')],
+            'cargo' => 'required|string',
+            'unidad' => 'required|string',
+            'rol' => ['required', 'string', Rule::in(array_keys(User::ROLES))],
+            'carrera_id' => 'nullable|exists:carreras,id_carrera',
             'puede_verificar' => 'nullable|boolean',
-            'estado'          => ['required', Rule::in(['ACTIVO', 'INACTIVO'])],
-            'items'           => 'nullable|array',
-            'items.*'         => 'nullable|string|max:20',
-            'cambio_titular'  => 'nullable|boolean',
-            'motivo_cambio'   => 'nullable|string|max:255',
+            'estado' => ['required', Rule::in(['ACTIVO', 'INACTIVO'])],
+            'items' => 'nullable|array',
+            'items.*' => 'nullable|string|max:20',
+            'cambio_titular' => 'nullable|boolean',
+            'motivo_cambio' => 'nullable|string|max:255',
         ], [
-            'rol.in'    => 'El rol seleccionado no es válido.',
+            'rol.in' => 'El rol seleccionado no es válido.',
             'estado.in' => 'El estado debe ser ACTIVO o INACTIVO.',
         ]);
 
@@ -147,15 +156,15 @@ class UsuarioController extends Controller
             && ($request->estado === 'INACTIVO' || $request->rol !== $rolAnterior);
 
         $usuario->update([
-            'ci'              => $request->ci,
-            'email'           => $request->email,
+            'ci' => $request->ci,
+            'email' => $request->email,
             'nombre_completo' => $request->nombre_completo,
-            'cargo'           => $request->cargo,
-            'unidad'          => $request->unidad,
-            'rol'             => $request->rol,
-            'id_carrera'      => $request->carrera_id,
+            'cargo' => $request->cargo,
+            'unidad' => $request->unidad,
+            'rol' => $request->rol,
+            'id_carrera' => $request->carrera_id,
             'puede_verificar' => $request->boolean('puede_verificar'),
-            'estado'          => $request->estado,
+            'estado' => $request->estado,
         ]);
 
         if ($usuario->estaActivo()) {
@@ -224,6 +233,11 @@ class UsuarioController extends Controller
             return back()->with('error', "No se puede eliminar a {$usuario->nombre_completo} porque tiene {$activos} activo(s) a su nombre. Desvincula primero los activos o desvinculá su custodia de los ítems.");
         }
 
+        $verificaciones = VerificacionFisica::where('id_verificador', $usuario->id_usuario)->count();
+        if ($verificaciones > 0) {
+            return back()->with('error', "No se puede eliminar a {$usuario->nombre_completo} porque tiene {$verificaciones} verificación(es) registradas. Desactiva el usuario para conservar el historial.");
+        }
+
         $usuario->items()->detach();
         $usuario->delete();
 
@@ -231,22 +245,22 @@ class UsuarioController extends Controller
     }
 
     public function generarQr($id)
-{
-    $usuario = User::where('id_usuario', $id)->firstOrFail();
+    {
+        $usuario = User::where('id_usuario', $id)->firstOrFail();
 
-    $contenidoQr = "SISITPM - CREDENCIAL DE ACCESO\n" .
-                   "C.I.: {$usuario->ci}\n" .
-                   "Nombre: {$usuario->nombre_completo}\n" .
-                   "Item: ".($usuario->items->pluck('numero_item')->implode(', ') ?: 'N/A')."\n" .
-                   "Rol: {$usuario->rol}\n" .
-                   "Cargo: " . ($usuario->cargo ?? 'N/A') . "\n" .
-                   "Unidad: " . ($usuario->unidad ?? 'N/A') . "\n" .
-                   "Correo: " . ($usuario->email ?? 'N/A');
+        $contenidoQr = "SISITPM - CREDENCIAL DE ACCESO\n".
+                       "C.I.: {$usuario->ci}\n".
+                       "Nombre: {$usuario->nombre_completo}\n".
+                       'Item: '.($usuario->items->pluck('numero_item')->implode(', ') ?: 'N/A')."\n".
+                       "Rol: {$usuario->rol}\n".
+                       'Cargo: '.($usuario->cargo ?? 'N/A')."\n".
+                       'Unidad: '.($usuario->unidad ?? 'N/A')."\n".
+                       'Correo: '.($usuario->email ?? 'N/A');
 
-    $qrImage = QrCode::size(220)->generate($contenidoQr);
+        $qrImage = QrCode::size(220)->generate($contenidoQr);
 
-    return view('usuarios.qr', compact('usuario', 'qrImage'));
-}
+        return view('usuarios.qr', compact('usuario', 'qrImage'));
+    }
 
     public function enviarCredenciales($id)
     {
@@ -258,22 +272,126 @@ class UsuarioController extends Controller
             return back()->with('error', 'El usuario no tiene email.');
         }
 
-        $passwordTemporal = 'Sis' . rand(1000, 9999) . '*';
-        $usuario->update(['password' => Hash::make($passwordTemporal)]);
+        $passwordTemporal = 'Sis'.rand(1000, 9999).'*';
 
         try {
             Mail::raw("Hola {$usuario->nombre_completo},\n\nNueva contraseña: {$passwordTemporal}", function ($m) use ($usuario) {
                 $m->to($usuario->email)->subject('Nueva Contraseña - SISITPM');
             });
-        } catch (\Exception $e) {
-            return back()->with('error', 'Error al enviar email.');
+            $usuario->update(['password' => Hash::make($passwordTemporal)]);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->with('error', 'No se pudo enviar el correo. Verifica la configuración SMTP.');
         }
 
         return back()->with('success', "Contraseña enviada a {$usuario->email}.");
     }
+
+    public function reenviarCredencialesSeleccionados(Request $request)
+    {
+        abort_if(Auth::user()->rol !== 'ADMINISTRADOR', 403);
+
+        $ids = $request->validate([
+            'usuarios' => ['required', 'array', 'min:1'],
+            'usuarios.*' => ['integer', 'exists:usuarios,id_usuario'],
+        ])['usuarios'];
+
+        return $this->reenviarCredencialesParaUsuarios($ids);
+    }
+
+    public function reenviarCredencialesTodos()
+    {
+        abort_if(Auth::user()->rol !== 'ADMINISTRADOR', 403);
+
+        return $this->reenviarCredencialesParaUsuarios(
+            User::query()->whereNotNull('email')->pluck('id_usuario')->all()
+        );
+    }
+
+    public function destroySeleccionados(Request $request)
+    {
+        abort_if(Auth::user()->rol !== 'ADMINISTRADOR', 403);
+
+        $ids = $request->validate([
+            'usuarios' => ['required', 'array', 'min:1'],
+            'usuarios.*' => ['integer', 'exists:usuarios,id_usuario'],
+        ])['usuarios'];
+
+        $eliminados = 0;
+        $omitidos = [];
+
+        foreach (User::whereIn('id_usuario', $ids)->get() as $usuario) {
+            if ((int) $usuario->id_usuario === (int) Auth::id()) {
+                $omitidos[] = "{$usuario->nombre_completo}: es tu usuario actual.";
+
+                continue;
+            }
+
+            $activos = $usuario->activosCustodiados()->count();
+            if ($activos > 0) {
+                $omitidos[] = "{$usuario->nombre_completo}: tiene {$activos} activo(s) asignado(s).";
+
+                continue;
+            }
+
+            $verificaciones = VerificacionFisica::where('id_verificador', $usuario->id_usuario)->count();
+            if ($verificaciones > 0) {
+                $omitidos[] = "{$usuario->nombre_completo}: tiene {$verificaciones} verificación(es) registradas.";
+
+                continue;
+            }
+
+            $usuario->items()->detach();
+            $usuario->delete();
+            $eliminados++;
+        }
+
+        $mensaje = "{$eliminados} usuario(s) eliminado(s).";
+        if ($omitidos !== []) {
+            $mensaje .= ' Omitidos: '.implode(' ', $omitidos);
+        }
+
+        return back()->with($eliminados > 0 ? 'success' : 'error', $mensaje);
+    }
+
+    private function reenviarCredencialesParaUsuarios(array $ids)
+    {
+        $enviados = 0;
+        $omitidos = [];
+
+        foreach (User::whereIn('id_usuario', $ids)->get() as $usuario) {
+            if (empty($usuario->email)) {
+                $omitidos[] = "{$usuario->nombre_completo}: no tiene correo.";
+
+                continue;
+            }
+
+            $passwordTemporal = 'Sis'.rand(1000, 9999).'*';
+
+            try {
+                Mail::raw("Hola {$usuario->nombre_completo},\n\nNueva contraseña: {$passwordTemporal}", function ($m) use ($usuario) {
+                    $m->to($usuario->email)->subject('Nueva Contraseña - SISITPM');
+                });
+                $usuario->update(['password' => Hash::make($passwordTemporal)]);
+                $enviados++;
+            } catch (\Throwable $e) {
+                report($e);
+                $omitidos[] = "{$usuario->nombre_completo}: no se pudo enviar el correo.";
+            }
+        }
+
+        $mensaje = "{$enviados} contraseña(s) enviada(s).";
+        if ($omitidos !== []) {
+            $mensaje .= ' Omitidos: '.implode(' ', $omitidos);
+        }
+
+        return back()->with($enviados > 0 ? 'success' : 'error', $mensaje);
+    }
+
     /**
- * Mostrar formulario de creación.
- */
+     * Mostrar formulario de creación.
+     */
     public function create()
     {
         abort_if(Auth::user()->rol !== 'ADMINISTRADOR', 403);
@@ -291,9 +409,9 @@ class UsuarioController extends Controller
     {
         abort_if(Auth::user()->rol !== 'ADMINISTRADOR', 403);
 
-        $usuario  = User::where('id_usuario', $id)->firstOrFail();
+        $usuario = User::where('id_usuario', $id)->firstOrFail();
         $carreras = Carrera::orderBy('nombre')->get();
-        $items    = Item::orderBy('numero_item')->get();
+        $items = Item::orderBy('numero_item')->get();
 
         $itemsAsignados = $usuario->items()->pluck('numero_item')->all();
 
@@ -309,8 +427,16 @@ class UsuarioController extends Controller
         $termino = trim((string) $request->input('q'));
 
         $query = User::query()
-            ->with(['items', 'carrera'])
-            ->where('estado', 'ACTIVO');
+            ->with(['itemsVigentes', 'carrera', 'activosCustodiados'])
+            ->where(function ($q) use ($termino) {
+                $q->where('estado', 'ACTIVO');
+
+                if ($termino !== '' && preg_match('/^[0-9]{1,10}$/', $termino)) {
+                    $q->orWhereHas('items', function ($itemQuery) use ($termino) {
+                        $itemQuery->where('numero_item', $termino);
+                    });
+                }
+            });
 
         // Filtros: carrera, unidad organizacional y rol
         if ($request->filled('carrera_id')) {
@@ -323,6 +449,21 @@ class UsuarioController extends Controller
 
         if ($request->filled('rol')) {
             $query->where('rol', $request->rol);
+        }
+
+        if ($request->filled('ambiente_id')) {
+            $ambienteId = (int) $request->input('ambiente_id');
+            $query->orderByRaw(
+                'CASE WHEN EXISTS (SELECT 1 FROM activos_fijos WHERE activos_fijos.id_custodio = usuarios.id_usuario AND activos_fijos.id_ambiente = ? AND activos_fijos.deleted_at IS NULL)
+                    OR EXISTS (SELECT 1 FROM item_usuario
+                        INNER JOIN items ON items.id_item = item_usuario.id_item
+                        WHERE item_usuario.id_usuario = usuarios.id_usuario
+                        AND item_usuario.fecha_fin IS NULL
+                        AND items.id_ambiente = ?
+                        AND items.deleted_at IS NULL)
+                    THEN 0 ELSE 1 END',
+                [$ambienteId, $ambienteId]
+            );
         }
 
         if ($termino !== '') {
@@ -347,10 +488,15 @@ class UsuarioController extends Controller
             'unidad' => $u->unidad,
             'carrera' => $u->carrera?->nombre,
             'rol' => $u->rol,
-            'items' => $u->items->pluck('numero_item')->all(),
+            'items' => $u->itemsVigentes->pluck('numero_item')->all(),
+            'asignado_en_ambiente' => $request->filled('ambiente_id')
+                && (
+                    $u->activosCustodiados->contains('id_ambiente', (int) $request->input('ambiente_id'))
+                    || $u->itemsVigentes->contains('id_ambiente', (int) $request->input('ambiente_id'))
+                ),
             'texto' => $u->nombre_completo
                 .' — '.($u->cargo ?: 'Sin cargo')
-                .($u->items->isNotEmpty() ? ' [ítem '.$u->items->pluck('numero_item')->implode(', ').']' : ''),
+                .($u->itemsVigentes->isNotEmpty() ? ' [ítem '.$u->itemsVigentes->pluck('numero_item')->implode(', ').']' : ''),
         ]);
 
         // Si buscó un número de ítem y no apareció su titular, avisar por qué.
@@ -409,16 +555,16 @@ class UsuarioController extends Controller
                 ['numero_item' => $numero],
                 [
                     'descripcion' => null,
-                    'id_carrera'  => $usuario->id_carrera,
-                    'unidad'      => $usuario->unidad,
-                    'estado'      => 'VACANTE',
+                    'id_carrera' => $usuario->id_carrera,
+                    'unidad' => $usuario->unidad,
+                    'estado' => 'VACANTE',
                 ]
             );
 
             $idsItem[$item->id_item] = [
-                'tipo'         => 'TITULAR',
+                'tipo' => 'TITULAR',
                 'fecha_inicio' => now()->toDateString(),
-                'fecha_fin'    => null,
+                'fecha_fin' => null,
             ];
         }
 

@@ -3,42 +3,57 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use App\Models\Ambiente;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
-    protected $table      = 'usuarios';
+    protected $table = 'usuarios';
+
     protected $primaryKey = 'id_usuario';
 
-   protected $fillable = [
-    'ci', 'nombre_completo', 'email', 'password',
-    'cargo', 'unidad', 'rol', 'estado', 'id_carrera',
-    'puede_verificar',  // ⭐ NUEVO
-];
+    protected $fillable = [
+        'ci', 'nombre_completo', 'email', 'password',
+        'cargo', 'unidad', 'rol', 'estado', 'id_carrera',
+        'puede_verificar',  // ⭐ NUEVO
+    ];
+
     protected $hidden = ['password', 'remember_token'];
 
     protected $casts = [
-    'estado'          => 'string',
-    'rol'             => 'string',
-    'puede_verificar' => 'boolean',  // ⭐ NUEVO
-];
+        'estado' => 'string',
+        'rol' => 'string',
+        'puede_verificar' => 'boolean',  // ⭐ NUEVO
+    ];
+
+    public function setNombreCompletoAttribute(?string $nombre): void
+    {
+        $this->attributes['nombre_completo'] = $nombre === null
+            ? null
+            : mb_strtoupper(trim($nombre), 'UTF-8');
+    }
 
     // Cache por instancia para evitar consultas repetidas en el mismo request
     protected ?array $_idsAmbientesVisiblesCache = null;
+
     protected ?array $_idsCarrerasVisiblesCache = null;
+
     // ============================================================
     // AUTENTICACIÓN
     // ============================================================
     public function getAuthPassword()
     {
         return $this->password;
+    }
+
+    public function historialReportes()
+    {
+        return $this->hasMany(HistorialReporte::class, 'id_usuario', 'id_usuario');
     }
 
     public function verifyPassword(string $password): bool
@@ -51,11 +66,16 @@ class User extends Authenticatable
     // ============================================================
 
     public const ROL_ADMINISTRADOR = 'ADMINISTRADOR';
+
     public const ROL_INVENTARIADOR = 'INVENTARIADOR';
-    public const ROL_AYUDANTE      = 'AYUDANTE';
-    public const ROL_JEFE_CARRERA  = 'JEFE_CARRERA';
-    public const ROL_CUSTODIO      = 'DOCENTE_CUSTODIO';
-    public const ROL_RECTOR        = 'RECTOR';
+
+    public const ROL_AYUDANTE = 'AYUDANTE';
+
+    public const ROL_JEFE_CARRERA = 'JEFE_CARRERA';
+
+    public const ROL_CUSTODIO = 'DOCENTE_CUSTODIO';
+
+    public const ROL_RECTOR = 'RECTOR';
 
     /**
      * Roles válidos. `CUSTODIO` y `VERIFICADOR` son valores heredados: se
@@ -64,10 +84,10 @@ class User extends Authenticatable
     public const ROLES = [
         self::ROL_ADMINISTRADOR => 'Administrador',
         self::ROL_INVENTARIADOR => 'Inventariador',
-        self::ROL_AYUDANTE      => 'Ayudante (temporal)',
-        self::ROL_JEFE_CARRERA  => 'Jefe de Carrera',
-        self::ROL_CUSTODIO      => 'Docente Custodio',
-        self::ROL_RECTOR        => 'Rector',
+        self::ROL_AYUDANTE => 'Ayudante (temporal)',
+        self::ROL_JEFE_CARRERA => 'Jefe de Carrera',
+        self::ROL_CUSTODIO => 'Docente Custodio',
+        self::ROL_RECTOR => 'Rector',
     ];
 
     public static function esRolValido(?string $rol): bool
@@ -263,6 +283,7 @@ class User extends Authenticatable
 
         if ($this->puedeVerTodo()) {
             $this->_idsAmbientesVisiblesCache = null;
+
             return null;
         }
 
@@ -272,6 +293,7 @@ class User extends Authenticatable
                 ->pluck('id_ambiente')
                 ->all();
             $this->_idsAmbientesVisiblesCache = $result;
+
             return $result;
         }
 
@@ -289,6 +311,7 @@ class User extends Authenticatable
 
             $result = $porBienes->merge($porItems)->merge($porPivote)->unique()->values()->all();
             $this->_idsAmbientesVisiblesCache = $result;
+
             return $result;
         }
 
@@ -305,6 +328,7 @@ class User extends Authenticatable
 
         $result = $porBienes->merge($porItems)->merge($porPivote)->unique()->values()->all();
         $this->_idsAmbientesVisiblesCache = $result;
+
         return $result;
     }
 
@@ -319,6 +343,7 @@ class User extends Authenticatable
 
         if ($this->puedeVerTodasLasCarreras()) {
             $this->_idsCarrerasVisiblesCache = null;
+
             return null;
         }
 
@@ -330,6 +355,7 @@ class User extends Authenticatable
 
         $result = $porAmbientes->unique()->values()->all();
         $this->_idsCarrerasVisiblesCache = $result;
+
         return $result;
     }
 

@@ -27,11 +27,31 @@
             border-radius: 6px;
             overflow: hidden;
             box-shadow: 0 10px 25px rgba(0,0,0,.15);
-            border: 1px solid #cbd5e1;
-            width: 700px;
+            border: 1.5px solid #000;
+            width: 800px;
             max-width: 100%;
         }
 
+        /* Columna Izquierda: Logo Grande */
+        .etiqueta-logo-box {
+            width: 170px;
+            background: #f8fafc;
+            border-right: 1px solid #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            flex-shrink: 0;
+        }
+
+        .etiqueta-logo-box img {
+            width: 150px;
+            height: 150px;
+            object-fit: contain;
+            display: block;
+        }
+
+        /* Columna Central: Información */
         .etiqueta-info {
             flex: 1;
             padding: 14px 18px;
@@ -40,119 +60,98 @@
             justify-content: center;
         }
 
-        /* Encabezado con logo y título compacto */
-        .etiqueta-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding-bottom: 8px;
-            border-bottom: 1.5px solid #0f172a;
-            margin-bottom: 10px;
-        }
-
-        .etiqueta-logo {
-            width: 36px;
-            height: 36px;
-            object-fit: contain;
-            flex-shrink: 0;
-        }
-
         .etiqueta-institucion {
-            flex: 1;
-            font-size: 12px;
+            font-size: 13.5px;
             font-weight: 800;
-            color: #0f172a;
+            color: #000;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #000;
+            margin-bottom: 10px;
+            text-align: center;
         }
 
-        /* Cuerpo de filas compacto */
         .etiqueta-body {
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 6px;
         }
 
         .etiqueta-row {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 12px;
+            gap: 10px;
+            font-size: 13px;
             line-height: 1.2;
         }
 
         .etiqueta-row .label {
             font-weight: 800;
-            color: #0f172a;
+            color: #000;
             text-transform: uppercase;
-            font-size: 11px;
+            font-size: 12.5px;
             letter-spacing: 0.5px;
-            min-width: 75px;
+            min-width: 85px;
         }
 
         .etiqueta-row .value {
             font-weight: 700;
-            color: #1e293b;
-            font-size: 13px;
+            color: #000;
+            font-size: 14.5px;
         }
 
         .etiqueta-codigo {
-            font-size: 15px !important;
-            font-weight: 800 !important;
+            font-size: 18px !important;
+            font-weight: 900 !important;
             color: #dc2626 !important;
         }
 
         .etiqueta-nombre {
-            font-size: 14px !important;
-            font-weight: 800 !important;
-            color: #0f172a !important;
+            font-size: 17px !important;
+            font-weight: 900 !important;
+            color: #000 !important;
             text-transform: uppercase;
         }
 
         .etiqueta-fuente {
             display: inline-block;
-            background: #f1f5f9;
-            color: #334155;
-            font-size: 11px;
-            font-weight: 800;
+            background: #e2e8f0;
+            color: #0f172a;
+            font-size: 12px;
+            font-weight: 900;
             padding: 2px 8px;
-            border-radius: 4px;
-            border: 1px solid #cbd5e1;
+            border-radius: 2px;
+            border: 1px solid #94a3b8;
             text-transform: uppercase;
         }
+        .etiqueta-fuente.bg-dc2626 {
+            background: #dc2626 !important;
+            color: #ffffff !important;
+            border-color: #dc2626 !important;
+        }
 
-        /* Sección QR derecha */
+        /* Columna Derecha: QR */
         .etiqueta-qr {
-            width: 160px;
-            background: #f8fafc;
-            border-left: 2px dashed #cbd5e1;
+            width: 170px;
+            background: #f1f5f9;
+            border-left: 1px solid #000;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 12px;
+            padding: 10px;
             flex-shrink: 0;
         }
 
         .etiqueta-qr svg,
         .etiqueta-qr img {
-            width: 125px;
-            height: 125px;
+            width: 150px;
+            height: 150px;
             display: block;
             background: white;
-            padding: 4px;
-            border-radius: 4px;
-            border: 1px solid #e2e8f0;
-        }
-
-        .etiqueta-qr-label {
-            margin-top: 6px;
-            font-size: 8.5px;
-            font-weight: 800;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            text-align: center;
+            padding: 2px;
+            border-radius: 2px;
+            border: 1px solid #000;
         }
 
         /* Botones flotantes de acción */
@@ -187,7 +186,7 @@
             html, body { background: white !important; padding: 0 !important; }
             .acciones { display: none !important; }
             .etiqueta-wrapper {
-                width: 190mm !important;
+                width: 200mm !important;
                 margin: 20mm auto !important;
                 box-shadow: none !important;
                 border: 2px solid #0f172a !important;
@@ -198,12 +197,19 @@
 <body>
 
     <div class="etiqueta-wrapper">
+        <!-- Izquierda: Logo Grande -->
+        <div class="etiqueta-logo-box">
+            @if(file_exists(public_path('images/logo.png')))
+                <img src="{{ asset('images/logo.png') }}" alt="Logo">
+            @else
+                <span>Logo</span>
+            @endif
+        </div>
+
+        <!-- Centro: Información -->
         <div class="etiqueta-info">
-            <div class="etiqueta-header">
-                <img src="{{ asset('images/logo.png') }}" alt="Logo" class="etiqueta-logo">
-                <div class="etiqueta-institucion">
-                    INST. TECNOLOGICO PUERTO DE MEJILLONES
-                </div>
+            <div class="etiqueta-institucion">
+                INSTITUTO TECNOLOGICO PUERTO DE MEJILLONES
             </div>
 
             <div class="etiqueta-body">
@@ -237,14 +243,19 @@
                         {{ $activo->fuente->codigo ?? $activo->fuente->nombre ?? 'PSP' }}
                     </span>
                 </div>
+
+                <div class="etiqueta-row">
+                    <span class="label">RV:</span>
+                    <span class="etiqueta-fuente {{ $activo->rv === 'SI' ? 'bg-dc2626 text-white border-dc2626' : '' }}">
+                        {{ $activo->rv === 'SI' ? 'SÍ' : 'NO' }}
+                    </span>
+                </div>
             </div>
         </div>
 
+        <!-- Derecha: QR -->
         <div class="etiqueta-qr">
             {!! $qrImage ?? '' !!}
-            <div class="etiqueta-qr-label">
-                ESCANEAR<br>PARA VERIFICAR
-            </div>
         </div>
     </div>
 

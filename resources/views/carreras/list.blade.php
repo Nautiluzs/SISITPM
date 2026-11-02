@@ -1,34 +1,81 @@
 @extends('layouts.app')
 
-@section('content')
-<section class="hero-card">
-    <div>
-        <div style="display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.18);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;">Carreras</div>
-        <h1 style="margin:10px 0 8px;font-size:28px;">Carreras</h1>
-        <p>Listado general de carreras y sus respectivos Jefes de Carrera.</p>
-    </div>
-    <div class="stat-grid">
-        <div><strong>{{ $carreras->count() }}</strong><span>Carreras</span></div>
-    </div>
-</section>
+@section('title', 'Gestión de Carreras')
 
-<section class="panel">
-    <h2>Listado de Carreras</h2>
+@section('content')
+
+<div class="carreras-page px-4 py-6 max-w-7xl mx-auto text-slate-800 dark:text-slate-100 transition-colors duration-200">
+
+    {{-- ENCABEZADO CORPORATIVO --}}
+    <div class="bg-gradient-to-r from-slate-900 via-teal-900 to-slate-900
+                dark:from-slate-950 dark:via-teal-950 dark:to-slate-950
+                p-8 rounded-2xl text-white mb-8 shadow-xl border border-slate-700
+                flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+
+        <div>
+            <span class="bg-teal-600 text-white px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider shadow-sm">
+                Estructura Académica
+            </span>
+
+            <h1 class="text-3xl font-black mt-3 mb-1 tracking-tight text-white">
+                Carreras Institucionales
+            </h1>
+
+            {{-- TEXTO BLANCO EN AMBOS MODOS --}}
+            <p class="text-white text-sm m-0">
+                Listado general de carreras, áreas académicas y asignación de jefaturas.
+            </p>
+        </div>
+
+        {{-- TOTAL DE CARRERAS --}}
+        <div class="flex items-center gap-4 bg-slate-800 dark:bg-slate-900 px-5 py-3 rounded-xl border border-slate-600 shadow-lg">
+            <div class="text-right">
+                <span class="text-xs text-slate-300 block font-semibold">
+                    Total Registradas
+                </span>
+
+                <span class="text-2xl font-black text-white">
+                    {{ $carreras->count() }}
+                </span>
+            </div>
+
+            @if(auth()->check() && auth()->user()->esAdmin())
+                <a href="{{ route('carreras.create') }}"
+                   class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer no-underline">
+                    <span>+</span> Nueva Carrera
+                </a>
+            @endif
+        </div>
+    </div>
+
+    {{-- ALERTA DE ESTADO --}}
     @if(session('status'))
-        <div class="result-box">
-            <h3>Éxito</h3>
-            <p>{{ session('status') }}</p>
+        <div class="mb-6 p-4 bg-blue-100 dark:bg-blue-950 border border-blue-300 dark:border-blue-700
+                    text-blue-900 dark:text-blue-100 rounded-xl flex items-center gap-3 shadow-sm">
+            <span class="text-xl">ℹ️</span>
+            <div class="text-sm font-bold">{{ session('status') }}</div>
         </div>
     @endif
+
+    {{-- ALERTA DE ÉXITO --}}
     @if(session('success'))
-        <div style="background:#dcfce7;border:1px solid #bbf7d0;color:#166534;padding:12px 16px;border-radius:10px;margin-bottom:15px;font-weight:700;">
-            ✓ {{ session('success') }}
+        <div class="mb-6 p-4 bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700
+                    text-emerald-900 dark:text-emerald-100 rounded-xl flex items-center gap-3 shadow-sm">
+            <span class="text-xl">✅</span>
+            <div class="text-sm font-bold">{{ session('success') }}</div>
         </div>
     @endif
+
+    {{-- ERRORES DE VALIDACIÓN --}}
     @if($errors->any())
-        <div class="result-box" style="border-color:#fecaca;background:#fff1f2;">
-            <h3>Error</h3>
-            <ul>
+        <div class="mb-6 p-4 bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700
+                    text-rose-900 dark:text-rose-100 rounded-xl shadow-sm">
+
+            <div class="font-bold text-sm mb-1">
+                ⚠️ Se encontraron algunos errores:
+            </div>
+
+            <ul class="list-disc list-inside text-xs space-y-1">
                 @foreach($errors->all() as $err)
                     <li>{{ $err }}</li>
                 @endforeach
@@ -36,56 +83,172 @@
         </div>
     @endif
 
-    {{-- Tarjetas cuadradas estilo carpeta con doble clic usando id_carrera --}}
-    <style>
-        .folders-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-            gap: 16px;
-            margin-top: 20px;
-        }
-        .folder-card {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 14px;
-            padding: 20px;
-            text-align: left;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        .folder-card:hover {
-            transform: translateY(-3px);
-            border-color: #2563eb;
-            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.1);
-        }
-    </style>
+    {{-- CONTENEDOR PRINCIPAL --}}
+    <div class="bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-300 dark:border-slate-700
+                p-6 shadow-md transition-colors duration-200">
 
-    <div class="folders-grid">
-        @foreach($carreras as $c)
-            {{-- ⭐ Redirección precisa usando $c->id_carrera --}}
-            <div class="folder-card" ondblclick="window.location.href='{{ route('carreras.show', $c->id_carrera) }}'">
-                <div>
-                    <div style="font-size: 32px; margin-bottom: 8px;">🎓</div>
-                    <h3 style="font-size: 16px; font-weight: 800; color: #0f172a; margin: 0 0 6px 0;">{{ $c->nombre }}</h3>
-                    <div style="font-size: 11px; color: #475569; background: #f8fafc; padding: 8px; border-radius: 8px; border: 1px solid #f1f5f9; margin-top: 10px;">
-                        <strong style="color: #1e293b; display: block; margin-bottom: 2px;">👤 Jefe de Carrera:</strong>
-                        <span style="color: #2563eb; font-weight: 700;">{{ $c->jefeCarrera?->nombre_completo ?? 'No asignado' }}</span>
+        {{-- ENCABEZADO DEL LISTADO --}}
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3
+                    mb-6 border-b border-slate-300 dark:border-slate-700 pb-4">
+
+            <h2 class="text-lg font-black text-slate-900 dark:text-white m-0 flex items-center gap-2">
+                <span>📂</span>
+                Listado de Carreras y Ambientes
+            </h2>
+
+            <span class="text-xs font-semibold text-slate-600 dark:text-slate-300
+                         bg-white dark:bg-slate-800 px-3 py-1 rounded-lg
+                         border border-slate-200 dark:border-slate-600">
+                Usa el botón Ingresar para abrir
+            </span>
+        </div>
+
+        {{-- GRID DE TARJETAS --}}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+
+            @foreach($carreras as $c)
+
+                <div class="carrera-card relative bg-white dark:bg-slate-800
+                            border-2 border-slate-200 dark:border-slate-600
+                            hover:border-blue-500 dark:hover:border-blue-400
+                            rounded-2xl p-5 text-left transition-all duration-200
+                            hover:-translate-y-1 hover:shadow-xl
+                            flex flex-col justify-between">
+
+                    {{-- ID DE CARRERA --}}
+                    <span class="absolute top-3 left-3 text-lg font-black text-slate-900 dark:text-white">
+                        {{ $c->id_carrera }}
+                    </span>
+
+                    <div class="carrera-card-content">
+
+                        {{-- ICONO Y ESTADO --}}
+                        <div class="flex justify-between items-start mb-4 pt-6">
+
+                            <span class="text-3xl p-2 bg-slate-100 dark:bg-slate-700
+                                         rounded-xl shadow-sm border border-slate-200 dark:border-slate-600">
+                                🎓
+                            </span>
+
+                            <span class="text-[10px] font-black uppercase px-2.5 py-1
+                                         bg-blue-600 text-white rounded-lg shadow-sm">
+                                Activa
+                            </span>
+                        </div>
+
+                        {{-- NOMBRE DE CARRERA --}}
+                        <h3 class="text-lg font-black text-slate-900 dark:text-white mb-4 leading-tight">
+                            {{ $c->nombre }}
+                        </h3>
+
+                        {{-- JEFE DE CARRERA --}}
+                        <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl
+                                    border border-slate-200 dark:border-slate-600 mb-4 shadow-inner">
+
+                            <span class="text-[10px] uppercase tracking-wider font-extrabold
+                                         text-slate-500 dark:text-slate-400 block mb-1">
+                                👤 Jefe de Carrera
+                            </span>
+
+                            <span class="text-sm font-bold text-slate-800 dark:text-slate-200 block truncate">
+                                {{ $c->jefeCarrera?->nombre_completo ?? 'No asignado' }}
+                            </span>
+                        </div>
+
+                        {{-- AMBIENTES --}}
+                        <div class="mb-4">
+
+                            <span class="mb-2 block text-[10px] font-extrabold uppercase tracking-wider
+                                         text-slate-500 dark:text-slate-400">
+                                Ambientes
+                            </span>
+
+                            @forelse($c->ambientes as $ambiente)
+
+                                <a href="{{ route('ambientes.show', $ambiente->id_ambiente) }}"
+                                   class="mb-1 flex items-center justify-between rounded-lg
+                                          border border-slate-200 dark:border-slate-600
+                                          bg-white dark:bg-slate-700 px-2.5 py-2 text-xs font-bold
+                                          text-slate-700 dark:text-slate-200
+                                          no-underline transition hover:border-blue-400">
+
+                                    <span class="text-slate-700 dark:text-slate-200">
+                                        {{ $ambiente->nombre }}
+                                    </span>
+
+                                    <span class="text-sm font-black text-slate-900 dark:text-white">
+                                        {{ $ambiente->id_ambiente }}
+                                    </span>
+                                </a>
+
+                            @empty
+
+                                <span class="text-xs italic text-slate-500 dark:text-slate-400">
+                                    Sin ambientes registrados
+                                </span>
+
+                            @endforelse
+
+                        </div>
+                    </div>
+
+                    {{-- BOTONES DE ACCIÓN --}}
+                    <div class="flex flex-wrap gap-2 pt-4 border-t border-slate-200 dark:border-slate-600"
+                         onclick="event.stopPropagation();">
+
+                        {{-- INGRESAR --}}
+                        <a href="{{ route('carreras.show', $c->id_carrera) }}"
+                           class="flex-1 bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600
+                                  text-white text-center font-bold text-xs py-2.5 rounded-xl
+                                  transition-colors no-underline shadow-sm">
+                            Ingresar
+                        </a>
+
+                        {{-- NUEVO AMBIENTE --}}
+                        <a href="{{ route('carreras.show', $c->id_carrera) }}?nuevo_ambiente=1"
+                           class="flex-1 bg-teal-600 hover:bg-teal-500
+                                  text-white text-center font-bold text-xs py-2.5 rounded-xl
+                                  transition-colors no-underline shadow-sm"
+                           title="Crear nuevo ambiente">
+                            + Ambiente
+                        </a>
+
+                        @if(auth()->check() && auth()->user()->esAdmin())
+
+                            {{-- EDITAR CARRERA --}}
+                            <a href="{{ route('carreras.edit', $c->id_carrera) }}"
+                               class="w-full bg-amber-500 hover:bg-amber-400
+                                      text-slate-900 text-center font-bold text-xs py-2.5 rounded-xl
+                                      transition-colors no-underline shadow-sm mt-1">
+                                ✏️ Editar Carrera
+                            </a>
+
+                            {{-- ELIMINAR CARRERA --}}
+                            <form action="{{ route('carreras.destroy', $c->id_carrera) }}"
+                                  method="POST"
+                                  class="w-full mt-1"
+                                  onsubmit="return confirm('¿Está seguro de eliminar esta carrera? Esta acción no se puede deshacer.');">
+
+                                @csrf
+                                @method('DELETE')
+
+                                <button type="submit"
+                                        class="w-full bg-rose-600 hover:bg-rose-500 text-white
+                                               text-center font-bold text-xs py-2.5 rounded-xl
+                                               transition-colors cursor-pointer border-none shadow-sm">
+                                    🗑 Eliminar
+                                </button>
+                            </form>
+
+                        @endif
+
                     </div>
                 </div>
 
-                <div style="display: flex; gap: 8px; margin-top: 16px; padding-top: 10px; border-top: 1px solid #f1f5f9;" onclick="event.stopPropagation();">
-                    <a class="btn" href="{{ route('carreras.show', $c->id_carrera) }}" style="flex:1; text-align:center; font-size:12px; padding:6px; text-decoration:none;">Abrir</a>
-                    <a class="btn light" href="{{ route('carreras.show', $c->id_carrera) }}?nuevo_ambiente=1" style="flex:1; text-align:center; font-size:12px; padding:6px; text-decoration:none;">+ Ambiente</a>
-                    @if(auth()->check() && auth()->user()->esAdmin())
-                        <a class="btn" href="{{ route('carreras.edit', $c->id_carrera) }}" style="flex:1; text-align:center; font-size:12px; padding:6px; text-decoration:none; background:#f59e0b; color:#fff; border-color:#d97706;">✏️ Editar</a>
-                    @endif
-                </div>
-            </div>
-        @endforeach
+            @endforeach
+
+        </div>
     </div>
-</section>
+</div>
+
 @endsection

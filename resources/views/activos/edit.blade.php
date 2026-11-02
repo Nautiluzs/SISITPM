@@ -163,6 +163,30 @@
                 </small>
             </div>
 
+            {{-- RV (Revaluo) --}}
+            <div style="padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-top:12px;">
+                <div style="font-size:12px;font-weight:800;color:#334155;margin-bottom:8px;">
+                    RV (Revaluo)
+                </div>
+                <div style="display:flex;gap:10px;align-items:center;">
+                    <label id="rv-si-label" style="display:flex;gap:6px;align-items:center;cursor:pointer;padding:8px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;flex:1;">
+                        <input type="radio" name="rv" value="SI" id="rv-si" data-radio-rv
+                               @checked(old('rv', $activo->rv ?? 'NO') === 'SI')
+                               style="margin-top:2px;width:16px;height:16px;">
+                        <span style="font-size:13px;color:#166534;">Sí</span>
+                    </label>
+                    <label id="rv-no-label" style="display:flex;gap:6px;align-items:center;cursor:pointer;padding:8px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;flex:1;">
+                        <input type="radio" name="rv" value="NO" id="rv-no" data-radio-rv
+                               @checked((old('rv', $activo->rv ?? 'NO') ?? 'NO') === 'NO')
+                               style="margin-top:2px;width:16px;height:16px;">
+                        <span style="font-size:13px;color:#991b1b;">No</span>
+                    </label>
+                </div>
+                <small style="font-weight:400;color:#64748b;font-size:10px;display:block;margin-top:5px;">
+                    Marca si el activo está sujeto a revaluo. Aplica para Activo Fijo y No Activo.
+                </small>
+            </div>
+
             <label>Código del activo *
                 <input name="codigo_activo" id="codigo_activo" maxlength="50"
                        value="{{ old('codigo_activo', $activo->codigo_activo) }}">
@@ -229,6 +253,7 @@
                     id="custodioActivo"
                     :selected-id="old('id_custodio', $activo->id_custodio)"
                     :selected-texto="$activo->custodio?->nombre_completo"
+                    ambiente-field="id_ambiente"
                     :required="true" />
                 <span class="error-msg" data-for="id_custodio"></span>
             </label>
@@ -460,6 +485,40 @@
     document.querySelectorAll('[data-radio-tipo]').forEach(r => {
         r.addEventListener('change', () => aplicarTipoBien(r.value));
     });
+
+    // ============================================
+    // RV — Selector visual (estilo create)
+    // ============================================
+    function setRvEdit(valor) {
+        const si = document.getElementById('rv-si-label');
+        const no = document.getElementById('rv-no-label');
+        if (!si || !no) return;
+        si.classList.remove('selected');
+        no.classList.remove('selected');
+        si.style.borderColor = '#cbd5e1';
+        no.style.borderColor = '#cbd5e1';
+        si.style.background = '#fff';
+        no.style.background = '#fff';
+        if (valor === 'SI') {
+            si.classList.add('selected');
+            si.style.borderColor = '#16a34a';
+            si.style.background = '#dcfce7';
+        } else {
+            no.classList.add('selected');
+            no.style.borderColor = '#dc2626';
+            no.style.background = '#fee2e2';
+        }
+    }
+
+    document.querySelectorAll('[data-radio-rv]').forEach(r => {
+        r.addEventListener('change', () => setRvEdit(r.value));
+    });
+
+    // Aplicar al cargar
+    (function() {
+        const checked = document.querySelector('[data-radio-rv]:checked');
+        if (checked) setRvEdit(checked.value);
+    })();
 
     // Aplicar al cargar
     (function() {

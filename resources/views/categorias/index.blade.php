@@ -102,9 +102,12 @@
 
             <div class="folders-grid">
                 @foreach($categorias as $cat)
-                    <div class="folder-card" ondblclick="window.location.href='{{ route('categorias.show', $cat->id_categoria) }}'">
+                    <div class="folder-card" style="position:relative;">
+                        <span style="position:absolute;top:12px;left:12px;color:#000;font-size:18px;font-weight:900;z-index:2;">
+                            {{ $cat->id_categoria }}
+                        </span>
                         <div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-top: 24px;">
                                 <span style="font-size: 32px;">📁</span>
                                 <span style="background:#dcfce7;color:#166534;font-weight:800;font-size:11px;padding:3px 8px;border-radius:6px;">
                                     {{ $cat->activos_count ?? 0 }} activos
@@ -127,15 +130,17 @@
                             @endif
                         </div>
 
-                        {{-- Acciones (sin botón ver, doble clic directo para entrar) --}}
+                        {{-- Acciones --}}
                         <div style="display:flex; gap:6px; justify-content:flex-end; border-top:1px solid #f1f5f9; padding-top:10px;" onclick="event.stopPropagation();">
+                            <a href="{{ route('categorias.show', $cat->id_categoria) }}"
+                               style="background:#2563eb;color:#fff;padding:7px 12px;border-radius:8px;font-weight:700;text-decoration:none;font-size:12px;">
+                                Ingresar
+                            </a>
                             @if(auth()->check() && auth()->user()->esAdmin())
-                                @if($cat->id_ambiente)
-                                    <a href="{{ route('ambientes.show', $cat->id_ambiente) }}" title="Ver ambiente"
-                                       style="background:#fef9c3;color:#ca8a04;width:30px;height:30px;border-radius:6px;border:1px solid #fde047;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:12px;">
-                                        ✏️
-                                    </a>
-                                @endif
+                                <a href="{{ route('ambientes.show', $cat->id_ambiente) }}?editar_categoria={{ $cat->id_categoria }}" title="Editar categoría"
+                                   style="background:#f59e0b;color:#111827;padding:7px 10px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:11px;font-weight:800;">
+                                    Editar
+                                </a>
 
                                 <form method="POST"
                                       action="{{ route('categorias.destroy', $cat->id_categoria) }}"
@@ -144,8 +149,8 @@
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" title="Eliminar categoría"
-                                            style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;width:30px;height:30px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;">
-                                        🗑️
+                                            style="background:#ef0040;color:#fff;border:0;padding:7px 10px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:800;">
+                                        Eliminar
                                     </button>
                                 </form>
                             @endif
