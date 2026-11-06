@@ -297,19 +297,98 @@ class DatabaseSeeder extends BaseSeeder
             $itemsPorUsuario[$fila->id_usuario] = $items;
         }
 
-        // ============================================================
-        // 4. AMBIENTES
+             // ============================================================
+        // 4. AMBIENTES - BLOQUE 1 (Módulo 1)
         // ============================================================
         $ambientes = [
-            ['codigo' => 'LAB-1', 'nombre' => 'Laboratorio 1',            'bloque' => 'A', 'piso' => 1, 'carrera' => 'SIF'],
-            ['codigo' => 'LAB-2', 'nombre' => 'Laboratorio 2',            'bloque' => 'A', 'piso' => 1, 'carrera' => 'SIF'],
-            ['codigo' => 'LAB-3', 'nombre' => 'Laboratorio 3',            'bloque' => 'A', 'piso' => 1, 'carrera' => 'SIF'],
-            ['codigo' => 'RED-1', 'nombre' => 'Redes',                    'bloque' => 'B', 'piso' => 1, 'carrera' => 'SIF'],
-            ['codigo' => 'REC-1', 'nombre' => 'Rectorado',                'bloque' => 'A', 'piso' => 2, 'carrera' => 'ADM'],
-            ['codigo' => 'SEC-1', 'nombre' => 'Secretaría General',       'bloque' => 'A', 'piso' => 2, 'carrera' => 'ADM'],
-            ['codigo' => 'ADM-1', 'nombre' => 'Dirección Administrativa', 'bloque' => 'A', 'piso' => 2, 'carrera' => 'ADM'],
-            ['codigo' => 'ALM-1', 'nombre' => 'Almacén',                  'bloque' => 'C', 'piso' => 1, 'carrera' => 'ADM'],
-            ['codigo' => 'BIB-1', 'nombre' => 'Biblioteca',               'bloque' => 'B', 'piso' => 1, 'carrera' => 'ADM'],
+            
+            // ==========================================
+            // PLANTA BAJA (PISO 0)
+            // ==========================================
+
+            // --- ADMINISTRATIVO / AULAS COMUNES ---
+            ['codigo' => 'AUL-01',  'nombre' => 'Aula 1 Común',                     'bloque' => '1', 'piso' => 0, 'carrera' => 'ADM'],
+            ['codigo' => 'AUL-02',  'nombre' => 'Aula 2 Común',                     'bloque' => '1', 'piso' => 0, 'carrera' => 'ADM'],
+            ['codigo' => 'AUL-15',  'nombre' => 'Aula 15 Común',                    'bloque' => '1', 'piso' => 0, 'carrera' => 'ADM'],
+            ['codigo' => 'DEP-03',  'nombre' => 'Depósito 3 Común',                 'bloque' => '1', 'piso' => 0, 'carrera' => 'ADM'],
+            ['codigo' => 'DEP-09',  'nombre' => 'Depósito 9',                       'bloque' => '1', 'piso' => 0, 'carrera' => 'ADM'],
+            ['codigo' => 'DEP-10',  'nombre' => 'Depósito 10',                      'bloque' => '1', 'piso' => 0, 'carrera' => 'ADM'],
+            ['codigo' => 'DEP-16',  'nombre' => 'Depósito 16 Común',                'bloque' => '1', 'piso' => 0, 'carrera' => 'ADM'],
+            ['codigo' => 'INF-01',  'nombre' => 'Informaciones Común',              'bloque' => '1', 'piso' => 0, 'carrera' => 'ADM'],
+            ['codigo' => 'AUD-01',  'nombre' => 'Auditorio',                        'bloque' => '1', 'piso' => 0, 'carrera' => 'ADM'],
+            ['codigo' => 'DEP-AUD', 'nombre' => 'Depósito Auditorio',               'bloque' => '1', 'piso' => 0, 'carrera' => 'ADM'],
+
+            // --- INDUSTRIAS DE ALIMENTOS (INA) ---
+            ['codigo' => 'INA-A03', 'nombre' => 'Aula 3 INA',                       'bloque' => '1', 'piso' => 0, 'carrera' => 'INA'],
+            ['codigo' => 'INA-ABR', 'nombre' => 'Laboratorio Química ABR',          'bloque' => '1', 'piso' => 0, 'carrera' => 'INA'],
+            ['codigo' => 'INA-BRO', 'nombre' => 'Laboratorio Química y Bromatología','bloque' => '1', 'piso' => 0, 'carrera' => 'INA'],
+            ['codigo' => 'INA-TAL', 'nombre' => 'Taller INA',                       'bloque' => '1', 'piso' => 0, 'carrera' => 'INA'],
+            ['codigo' => 'INA-REP', 'nombre' => 'Taller Repostería INA',            'bloque' => '1', 'piso' => 0, 'carrera' => 'INA'],
+            ['codigo' => 'INA-D01', 'nombre' => 'Depósito INA 1',                   'bloque' => '1', 'piso' => 0, 'carrera' => 'INA'],
+            ['codigo' => 'INA-D02', 'nombre' => 'Depósito INA 2',                   'bloque' => '1', 'piso' => 0, 'carrera' => 'INA'],
+
+            // --- ELECTRÓNICA (ELC) ---
+            ['codigo' => 'ELC-POT', 'nombre' => 'Laboratorio de Potencia',          'bloque' => '1', 'piso' => 0, 'carrera' => 'ELC'],
+            ['codigo' => 'ELC-TEL', 'nombre' => 'Laboratorio Telecomunicaciones',   'bloque' => '1', 'piso' => 0, 'carrera' => 'ELC'],
+            ['codigo' => 'ELC-DIG', 'nombre' => 'Laboratorio Digital y Acústico',   'bloque' => '1', 'piso' => 0, 'carrera' => 'ELC'],
+            ['codigo' => 'ELC-OFI', 'nombre' => 'Oficina ELC',                      'bloque' => '1', 'piso' => 0, 'carrera' => 'ELC'],
+            ['codigo' => 'ELC-DEP', 'nombre' => 'Depósito ELC 14',                  'bloque' => '1', 'piso' => 0, 'carrera' => 'ELC'],
+
+            // --- MECÁNICA INDUSTRIAL (MEI) ---
+            ['codigo' => 'MEI-CAD', 'nombre' => 'Laboratorio CAD-CAM',              'bloque' => '1', 'piso' => 0, 'carrera' => 'MEI'],
+
+            // --- SISTEMAS INFORMÁTICOS (SIF) ---
+            ['codigo' => 'SIF-HAR', 'nombre' => 'Laboratorio 3 Hardware y Redes',   'bloque' => '1', 'piso' => 0, 'carrera' => 'SIF'],
+
+
+            // ==========================================
+            // PRIMER PISO (PISO 1)
+            // ==========================================
+
+            // --- ADMINISTRATIVO / AULAS COMUNES ---
+            ['codigo' => 'REC-01',  'nombre' => 'Rectorado',                        'bloque' => '1', 'piso' => 1, 'carrera' => 'ADM'],
+            ['codigo' => 'SEC-01',  'nombre' => 'Secretaría Rectorado',             'bloque' => '1', 'piso' => 1, 'carrera' => 'ADM'],
+            ['codigo' => 'SAL-REU', 'nombre' => 'Sala de Reuniones',                'bloque' => '1', 'piso' => 1, 'carrera' => 'ADM'],
+            ['codigo' => 'AUL-08',  'nombre' => 'Aula 8 Común',                     'bloque' => '1', 'piso' => 1, 'carrera' => 'ADM'],
+            ['codigo' => 'BIB-01',  'nombre' => 'Biblioteca',                       'bloque' => '1', 'piso' => 1, 'carrera' => 'ADM'],
+            ['codigo' => 'ADM-01',  'nombre' => 'Administración',                   'bloque' => '1', 'piso' => 1, 'carrera' => 'ADM'],
+            ['codigo' => 'ACA-01',  'nombre' => 'Académica',                        'bloque' => '1', 'piso' => 1, 'carrera' => 'ADM'],
+            ['codigo' => 'CON-01',  'nombre' => 'Control',                          'bloque' => '1', 'piso' => 1, 'carrera' => 'ADM'],
+            ['codigo' => 'ALM-01',  'nombre' => 'Almacén',                          'bloque' => '1', 'piso' => 1, 'carrera' => 'ADM'],
+
+            // --- SISTEMAS INFORMÁTICOS (SIF) ---
+            ['codigo' => 'SIF-HR2', 'nombre' => 'Laboratorio Hardware SIF',         'bloque' => '1', 'piso' => 1, 'carrera' => 'SIF'],
+            ['codigo' => 'SIF-A12', 'nombre' => 'Aula 12 SIF',                      'bloque' => '1', 'piso' => 1, 'carrera' => 'SIF'],
+            ['codigo' => 'SIF-RAD', 'nombre' => 'Radio',                            'bloque' => '1', 'piso' => 1, 'carrera' => 'SIF'],
+            ['codigo' => 'SIF-L01', 'nombre' => 'Laboratorio 1 SIF',                'bloque' => '1', 'piso' => 1, 'carrera' => 'SIF'],
+            ['codigo' => 'SIF-JEF', 'nombre' => 'Jefatura de Carrera SIF',          'bloque' => '1', 'piso' => 1, 'carrera' => 'SIF'],
+            ['codigo' => 'SIF-DL1', 'nombre' => 'Depósito Laboratorio 1 SIF',       'bloque' => '1', 'piso' => 1, 'carrera' => 'SIF'],
+            ['codigo' => 'SIF-L02', 'nombre' => 'Laboratorio 2 SIF',                'bloque' => '1', 'piso' => 1, 'carrera' => 'SIF'],
+            ['codigo' => 'SIF-DL2', 'nombre' => 'Depósito Laboratorio 2 SIF',       'bloque' => '1', 'piso' => 1, 'carrera' => 'SIF'],
+            ['codigo' => 'SIF-RED', 'nombre' => 'Redes SIF',                        'bloque' => '1', 'piso' => 1, 'carrera' => 'SIF'],
+
+            // --- ELECTRÓNICA (ELC) ---
+            ['codigo' => 'ELC-INS', 'nombre' => 'Laboratorio Instrumentos y Comp.', 'bloque' => '1', 'piso' => 1, 'carrera' => 'ELC'],
+            ['codigo' => 'ELC-L11', 'nombre' => 'Laboratorio 11 ELC',               'bloque' => '1', 'piso' => 1, 'carrera' => 'ELC'],
+            ['codigo' => 'ELC-SIM', 'nombre' => 'Laboratorio Simulaciones ELC',     'bloque' => '1', 'piso' => 1, 'carrera' => 'ELC'],
+            ['codigo' => 'ELC-DP2', 'nombre' => 'Depósito ELC',                     'bloque' => '1', 'piso' => 1, 'carrera' => 'ELC'],
+
+            // --- GASTRONOMÍA (GTR) ---
+            ['codigo' => 'GTR-A10', 'nombre' => 'Aula 10 GTR',                      'bloque' => '1', 'piso' => 1, 'carrera' => 'GTR'],
+            ['codigo' => 'GTR-JEF', 'nombre' => 'Jefatura Gastronomía',             'bloque' => '1', 'piso' => 1, 'carrera' => 'GTR'],
+
+            // --- MECÁNICA INDUSTRIAL (MEI) ---
+            ['codigo' => 'MEI-JEF', 'nombre' => 'Jefatura Mecánica Industrial',     'bloque' => '1', 'piso' => 1, 'carrera' => 'MEI'],
+            ['codigo' => 'MEI-DEP', 'nombre' => 'Depósito Mecánica Industrial',     'bloque' => '1', 'piso' => 1, 'carrera' => 'MEI'],
+            ['codigo' => 'MEI-DIB', 'nombre' => 'Dibujo Técnico MEI',               'bloque' => '1', 'piso' => 1, 'carrera' => 'MEI'],
+            ['codigo' => 'MEI-DDIB','nombre' => 'Depósito Dibujo Técnico MEI',      'bloque' => '1', 'piso' => 1, 'carrera' => 'MEI'],
+            ['codigo' => 'MEI-DIR', 'nombre' => 'Dir. Técnica MEI 30',              'bloque' => '1', 'piso' => 1, 'carrera' => 'MEI'],
+
+            // --- INDUSTRIAS DE ALIMENTOS (INA) ---
+            ['codigo' => 'INA-JEF', 'nombre' => 'Jefatura INA',                     'bloque' => '1', 'piso' => 1, 'carrera' => 'INA'],
+            ['codigo' => 'INA-LAB', 'nombre' => 'Laboratorio INA',                  'bloque' => '1', 'piso' => 1, 'carrera' => 'INA'],
+            ['codigo' => 'INA-MI1', 'nombre' => 'Depósito Microbiología INA',       'bloque' => '1', 'piso' => 1, 'carrera' => 'INA'],
+            ['codigo' => 'INA-MI2', 'nombre' => 'Depósito Microbiología INA 2',     'bloque' => '1', 'piso' => 1, 'carrera' => 'INA']
         ];
 
         foreach ($ambientes as $ambiente) {

@@ -193,6 +193,12 @@
                 <span class="error-msg" data-for="codigo_activo"></span>
             </label>
 
+            <label>Código antiguo (opcional)
+                <input name="codigo_antiguo" id="codigo_antiguo" maxlength="50"
+                       value="{{ old('codigo_antiguo', $activo->codigo_antiguo) }}">
+                <span class="error-msg" data-for="codigo_antiguo"></span>
+            </label>
+
             <label>N° de serie <span class="asterisco" id="req-serie">*</span>
                 <input name="numero_serie" id="numero_serie" maxlength="80"
                        value="{{ old('numero_serie', $activo->numero_serie) }}">

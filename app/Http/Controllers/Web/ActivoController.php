@@ -56,6 +56,7 @@ class ActivoController extends Controller
             $s = $request->buscar;
             $query->where(function ($q) use ($s) {
                 $q->where('codigo_activo', 'like', "%{$s}%")
+                    ->orWhere('codigo_antiguo', 'like', "%{$s}%")
                     ->orWhere('nombre', 'like', "%{$s}%")
                     ->orWhere('numero_serie', 'like', "%{$s}%")
                     ->orWhere('marca', 'like', "%{$s}%")
@@ -193,6 +194,7 @@ class ActivoController extends Controller
 
         $data = $request->validate([
             'codigo_activo' => 'required|string|max:50|unique:activos_fijos,codigo_activo',
+            'codigo_antiguo' => 'nullable|string|max:50',
             'tipo_bien' => 'required|in:ACTIVO_FIJO,NO_ACTIVO',
             'nombre' => 'required|string|max:150',
             'marca' => $tipoBien === 'ACTIVO_FIJO' ? 'required|string|max:80' : 'nullable|string|max:80',
@@ -383,6 +385,7 @@ class ActivoController extends Controller
 
         $data = $request->validate([
             'codigo_activo' => ['required', 'string', 'max:50', Rule::unique('activos_fijos', 'codigo_activo')->ignore($activo->id_activo, 'id_activo')],
+            'codigo_antiguo' => 'nullable|string|max:50',
             'tipo_bien' => 'required|in:ACTIVO_FIJO,NO_ACTIVO',
             'rv' => 'nullable|in:SI,NO',
             'nombre' => 'required|string|max:150',

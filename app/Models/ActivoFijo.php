@@ -19,7 +19,7 @@ class ActivoFijo extends Model
     protected $keyType = 'int';
 
     protected $fillable = [
-        'codigo_activo', 'tipo_bien', 'rv', 'nombre', 'descripcion', 'observaciones',
+        'codigo_activo', 'codigo_antiguo', 'tipo_bien', 'rv', 'nombre', 'descripcion', 'observaciones',
         'marca', 'modelo', 'numero_serie',
         'fecha_adquisicion', 'valor_adquisicion',
         'id_categoria', 'id_ambiente', 'id_fuente', 'id_custodio', 'id_item',
@@ -47,6 +47,7 @@ class ActivoFijo extends Model
                 'required', 'string', 'min:3', 'max:50',
                 Rule::unique('activos_fijos', 'codigo_activo')->ignore($id, 'id_activo'),
             ],
+            'codigo_antiguo' => 'nullable|string|max:50',
             'tipo_bien' => ['required', Rule::in(['ACTIVO_FIJO', 'NO_ACTIVO'])],
             'nombre' => 'required|string|max:150',
             'cantidad' => 'nullable|integer|min:1|max:100',
@@ -91,6 +92,7 @@ class ActivoFijo extends Model
         'codigo_activo.min' => 'El código debe tener al menos 3 caracteres.',
         'codigo_activo.max' => 'El código no debe superar los 50 caracteres.',
         'codigo_activo.unique' => 'Este código ya está registrado en otro activo.',
+        'codigo_antiguo.max' => 'El código antiguo no debe superar los 50 caracteres.',
         'tipo_bien.required' => 'Debe indicar si es activo fijo o no activo.',
         'tipo_bien.in' => 'El tipo de bien no es válido.',
         'nombre.required' => 'El nombre del activo es obligatorio.',

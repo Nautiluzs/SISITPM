@@ -174,6 +174,9 @@
                                     </td>
                                     <td style="padding:12px 10px;">
                                         <div style="font-weight:800;color:#0f172a;font-size:13px;">{{ $a->codigo_activo }}</div>
+                                        @if ($a->codigo_antiguo)
+                                            <div style="font-size:11px;color:#64748b;margin-top:2px;">Código antiguo: {{ $a->codigo_antiguo }}</div>
+                                        @endif
                                         <div style="font-size:11px;color:#64748b;margin-top:2px;">Serie: {{ $a->numero_serie ?? 'S/N' }}</div>
                                     </td>
                                     <td style="padding:12px 10px;text-align:center;">

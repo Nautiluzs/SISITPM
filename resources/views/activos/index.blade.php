@@ -83,7 +83,7 @@
             </div>
             <div style="display:flex;flex-direction:column;gap:6px;">
                 <label style="font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;">Buscar</label>
-                <input type="text" name="buscar" value="{{ request('buscar') }}" placeholder="Código, nombre, serie, marca, modelo..." style="width:200px;padding:8px 12px;border-radius:8px;border:1.5px solid #e2e8f0;background:#f8fafc;font-size:13px;">
+                <input type="text" name="buscar" value="{{ request('buscar') }}" placeholder="Código actual o antiguo, nombre, serie, marca, modelo..." style="width:260px;padding:8px 12px;border-radius:8px;border:1.5px solid #e2e8f0;background:#f8fafc;font-size:13px;">
             </div>
             <button type="submit" style="padding:8px 20px;background:#2563eb;color:white;border:none;border-radius:8px;font-weight:700;cursor:pointer;">
                 🔍 Filtrar
@@ -165,6 +165,9 @@
                                     </td>
                                     <td style="padding:12px 10px;">
                                         <div style="font-weight:800;color:#0f172a;font-size:13px;">{{ $a->codigo_activo }}</div>
+                                        @if ($a->codigo_antiguo)
+                                            <div style="font-size:11px;color:#64748b;margin-top:2px;">Código antiguo: {{ $a->codigo_antiguo }}</div>
+                                        @endif
                                         <div style="font-size:11px;color:#64748b;margin-top:2px;">Serie: {{ $a->numero_serie ?? 'S/N' }}</div>
                                     </td>
                                     <td style="padding:12px 10px;">

@@ -157,6 +157,13 @@
             </div>
 
             <div>
+                <label class="af-label">Código antiguo (opcional)</label>
+                <input type="text" name="codigo_antiguo" id="codigo_antiguo" maxlength="50" class="af-input"
+                       value="{{ old('codigo_antiguo') }}">
+                <small style="font-size:10px;color:#64748b;margin-top:5px;">Si el activo tiene un código anterior, puedes ingresarlo para buscarlo después.</small>
+            </div>
+
+            <div>
                 <label class="af-label">Categoría (Ambiente) <span class="af-asterisco visible">*</span></label>
                 <select name="id_categoria" id="id_categoria" class="af-input">
                     <option value="">— Seleccione categoría del ambiente —</option>
