@@ -310,7 +310,13 @@
 
     {{-- TEXTO DE CUMPLIMIENTO --}}
     <div class="info-cumplimiento">
-        En cumplimiento al D.S. 0181 Normas Básicas del Sistema de Bienes y Servicios en su Art. 146, 147, 157 (Asignación de Activos Fijos Muebles), la sección de Activos Fijos del Instituto Tecnológico "Puerto de Mejillones", procedió a la verificación y asignación de los siguientes activos:
+        @php $textoCumplimiento = \App\Models\Setting::get('acta_texto_cumplimiento', ''); @endphp
+        @if(trim($textoCumplimiento) !== '')
+            {!! nl2br(e($textoCumplimiento)) !!}
+        @else
+            En cumplimiento al D.S. 0181 Normas Básicas del Sistema de Bienes y Servicios en su Art. 146, 147, 157 (Asignación de Activos Fijos Muebles), la sección de Activos Fijos del Instituto Tecnológico "Puerto de Mejillones", procedió a la verificación y asignación de los siguientes activos:
+        @endif
+    </div>
     </div>
 
     {{-- TABLA PRINCIPAL DE ACTIVOS --}}
@@ -450,7 +456,12 @@
     <table class="tabla-obs">
         <tr>
             <td style="width: 50%;">
-                <b>Observaciones :</b> ASIGNACION PROVISIONAL DE ACTIVOS FIJOS (EQUIPAMIENTO 2025) HASTA REGULARIZACION DE RESOLUCION DEPARTAMENTAL DE DONACION.
+                <b>Observaciones :</b>
+                @if(trim($observaciones ?? '') !== '')
+                    {!! nl2br(e($observaciones)) !!}
+                @else
+                    Sin observaciones
+                @endif
             </td>
             <td style="width: 35%;">
                 <b>LIBERACION EN APLICACION AL ART. 148 DE SABS</b>
@@ -462,11 +473,18 @@
     </table>
     {{-- TEXTO LEGAL INFERIOR --}}
     <div class="texto-legal">
-    <strong>IMPORTANTE:</strong> Como responsable del bien de uso me comprometo a dar cumplimiento al D.S.0181 Art. 116 (RESPONSABILIDAD POR EL MANEJO DE BIENES) Parágrafo III. Todos los servidores<br>
+    @php
+        $textoLegal = \App\Models\Setting::get('acta_texto_legal', '');
+    @endphp
+    @if(trim($textoLegal) !== '')
+        {!! nl2br(e($textoLegal)) !!}
+    @else
+        <strong>IMPORTANTE:</strong> Como responsable del bien de uso me comprometo a dar cumplimiento al D.S.0181 Art. 116 (RESPONSABILIDAD POR EL MANEJO DE BIENES) Parágrafo III. Todos los servidores<br>
         Publicos son responsables por el debido uso, custodia, preservacion y demanda de servicios de mantenimiento de los bienes que les fueran asignados, de acuerdo el régimen de Responsabilidades Por la <br>
         funcion Publica, establecida en la Ley 1178 y sus reglamentos. <br>
         Art.157(PROHIBICIONES PARA LOS FUNCIONARIOS PÚBLICOS SOBRE EL USO DE ACTIVOS FIJOS MUEBLES)Inc A,b,c,d,e,f,h,g <br>
-    <strong>NOTA:</strong> COMO RESPONSABLE DEL USO Y CUSTODIO ME COMPROMETO CUMPLIR EL INCISO c: PRESTAR O TRANSFERIR EL BIEN A OTRO EMPLEADO PUBLICO.
+        <strong>NOTA:</strong> COMO RESPONSABLE DEL USO Y CUSTODIO ME COMPROMETO CUMPLIR EL INCISO c: PRESTAR O TRANSFERIR EL BIEN A OTRO EMPLEADO PUBLICO.
+    @endif
     </div>
 
 </div>

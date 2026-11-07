@@ -80,6 +80,8 @@ Route::middleware(['auth', 'usuario.activo'])->group(function () {
         return view('manual.index');
     })->name('manual.index');
     Route::get('/configuracion', [ConfiguracionController::class, 'index'])->name('configuracion.index');
+    Route::post('/configuracion/texto-cumplimiento', [ConfiguracionController::class, 'updateTextoCumplimiento'])->name('configuracion.texto-cumplimiento');
+    Route::post('/configuracion/texto-legal', [ConfiguracionController::class, 'updateTextoLegal'])->name('configuracion.texto-legal');
 
     // Perfil
     Route::prefix('profile')->name('profile.')->group(function () {
@@ -314,7 +316,9 @@ Route::middleware(['auth', 'usuario.activo'])->group(function () {
         Route::prefix('recepcion')->name('recepcion.')->group(function () {
             Route::get('/', [ActaRecepcionController::class, 'index'])->name('index');
             Route::get('/pdf/{id}', [ActaRecepcionController::class, 'pdf'])->name('pdf');
+            Route::post('/pdf/{id}', [ActaRecepcionController::class, 'generarPdf'])->name('pdf.generate');
             Route::get('/pdf-multiple', [ActaRecepcionController::class, 'pdfMultiple'])->name('pdf.multiple');
+            Route::post('/pdf-multiple', [ActaRecepcionController::class, 'generarPdfMultiple'])->name('pdf.multiple.generate');
             Route::get('/activo/{activo}/pdf', [ActaRecepcionController::class, 'actaRecepcionActivoPdf'])->name('activo.pdf');
             Route::get('/activo/{activo}/excel', [ActaRecepcionController::class, 'actaRecepcionActivoExcel'])->name('activo.excel');
         });
