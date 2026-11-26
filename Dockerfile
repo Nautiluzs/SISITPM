@@ -52,21 +52,12 @@ RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cac
 EXPOSE 8000
 
 # ============================================================
-# ARRANQUE PARA RAILWAY
+# ARRANQUE PARA RAILWAY (Base de datos limpia + Seeders)
 # 1. Limpia cachés
-# 2. Aplica migraciones pendientes (NO borra datos)
-# 3. Ejecuta el seeder (idempotente con updateOrCreate)
+# 2. Borra todas las tablas y vuelve a migrar todo desde cero
+# 3. Ejecuta los seeders
 # 4. Levanta el servidor
 # ============================================================
 CMD php artisan config:clear && \
-    php artisan migrate --force && \
-    php artisan db:seed --force || true && \
+    php artisan migrate:fresh --force --seed && \
     php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
-
-    # ============================================================
-# ARRANQUE PARA RAILWAY (Base de datos limpia + Seeders)
-# ============================================================
-# CMD php artisan config:clear && \
- #   php artisan migrate:fresh --force --seed && \
-  #  php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
-    
