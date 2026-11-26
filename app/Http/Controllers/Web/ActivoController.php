@@ -8,6 +8,7 @@ use App\Models\Ambiente;
 use App\Models\Carrera;
 use App\Models\Categoria;
 use App\Models\FuenteFinanciamiento;
+use App\Models\HistorialReporte;
 use App\Models\Item;
 use App\Models\User;
 use App\Services\QRCodeService;
@@ -45,12 +46,15 @@ class ActivoController extends Controller
     }
 
     // ==========================================
-    // INDEX — TODOS ven TODOS los activos (Excepto los dados de baja)
+    // INDEX — Cada usuario ve los activos de su alcance
     // ==========================================
     public function index(Request $request)
     {
-        $query = ActivoFijo::with(['categoria', 'ambiente.carrera', 'fuente', 'custodio'])
-            ->where('estado_registro', '!=', 'BAJA'); // ⭐ Oculta los dados de baja del inventario general
+        $user = Auth::user();
+        $activosVisibles = ActivoFijo::paraUsuario($user)
+            ->where('estado_registro', '!=', 'BAJA');
+        $query = (clone $activosVisibles)
+            ->with(['categoria', 'ambiente.carrera', 'fuente', 'custodio']);
 
         if ($request->filled('buscar')) {
             $s = $request->buscar;
@@ -72,6 +76,10 @@ class ActivoController extends Controller
             $query->where('id_ambiente', $request->id_ambiente);
         }
 
+        if ($request->filled('id_carrera')) {
+            $query->whereHas('ambiente', fn ($ambienteQuery) => $ambienteQuery->where('id_carrera', $request->id_carrera));
+        }
+
         $tipoBien = $request->input('tipo_bien', 'TODOS');
 
         if (in_array($tipoBien, ['ACTIVO_FIJO', 'NO_ACTIVO'], true)) {
@@ -79,20 +87,33 @@ class ActivoController extends Controller
         }
 
         $activos = $query->orderByDesc('id_activo')->get();
-        $carreras = Carrera::orderBy('nombre')->get();
-        $categorias = Categoria::orderBy('nombre')->get();
-        $ambientes = Ambiente::with('carrera')->orderBy('nombre')->get();
-        $fuentes = FuenteFinanciamiento::orderBy('nombre')->get();
-        $usuarios = User::where('estado', 'ACTIVO')->orderBy('nombre_completo')->get();
+        $categorias = Categoria::whereHas('activos', function ($activoQuery) use ($request, $user) {
+            $activoQuery->paraUsuario($user)
+                ->where('estado_registro', '!=', 'BAJA');
 
+            if ($request->filled('id_ambiente')) {
+                $activoQuery->where('id_ambiente', $request->id_ambiente);
+            }
+
+            if ($request->filled('id_carrera')) {
+                $activoQuery->whereHas('ambiente', fn ($ambienteQuery) => $ambienteQuery->where('id_carrera', $request->id_carrera));
+            }
+        })->orderBy('id_categoria')->get();
+        $ambientes = $user->ambientesVisibles()->with('carrera')->orderBy('nombre')->get();
+        $idsCarreras = $user->idsCarrerasVisibles();
+        $carreras = Carrera::query()
+            ->when($idsCarreras !== null, fn ($query) => $query->whereIn('id_carrera', $idsCarreras))
+            ->orderBy('nombre')
+            ->get();
+        $fuentes = FuenteFinanciamiento::orderBy('nombre')->get();
         $totales = [
-            'TODOS' => ActivoFijo::where('estado_registro', '!=', 'BAJA')->count(),
-            'ACTIVO_FIJO' => ActivoFijo::where('estado_registro', '!=', 'BAJA')->where('tipo_bien', 'ACTIVO_FIJO')->count(),
-            'NO_ACTIVO' => ActivoFijo::where('estado_registro', '!=', 'BAJA')->where('tipo_bien', 'NO_ACTIVO')->count(),
+            'TODOS' => (clone $activosVisibles)->count(),
+            'ACTIVO_FIJO' => (clone $activosVisibles)->where('tipo_bien', 'ACTIVO_FIJO')->count(),
+            'NO_ACTIVO' => (clone $activosVisibles)->where('tipo_bien', 'NO_ACTIVO')->count(),
         ];
 
         return view('activos.index', compact(
-            'activos', 'carreras', 'categorias', 'ambientes', 'fuentes', 'usuarios', 'tipoBien', 'totales'
+            'activos', 'carreras', 'categorias', 'ambientes', 'fuentes', 'tipoBien', 'totales'
         ));
     }
 
@@ -106,9 +127,7 @@ class ActivoController extends Controller
         $idAmbientePreseleccionado = $request->input('id_ambiente');
         $idCategoriaPreseleccionada = $request->input('id_categoria');
 
-        $categorias = Categoria::when($idAmbientePreseleccionado, function ($q) use ($idAmbientePreseleccionado) {
-            $q->where('id_ambiente', $idAmbientePreseleccionado);
-        })->orderBy('nombre')->get();
+        $categorias = Categoria::orderBy('id_categoria')->get();
 
         $ambientes = Ambiente::with('carrera')->orderBy('nombre')->get();
         $fuentes = FuenteFinanciamiento::orderBy('nombre')->get();
@@ -274,13 +293,7 @@ class ActivoController extends Controller
             return response()->json(['success' => true, 'message' => "¡{$creados} activo(s) registrado(s) correctamente!"]);
         }
 
-        $idCategoriaOrigen = $request->input('id_categoria_origen') ?? $request->input('id_categoria');
-        if ($idCategoriaOrigen) {
-            return redirect()->route('categorias.show', $idCategoriaOrigen)
-                ->with('success', "¡{$creados} activo(s) registrado(s) correctamente!");
-        }
-
-        return redirect()->route('activos.index')
+        return redirect()->route('ambientes.show', $data['id_ambiente'])
             ->with('success', "¡{$creados} activo(s) registrado(s) correctamente!");
     }
 
@@ -341,7 +354,11 @@ class ActivoController extends Controller
         $totalRegulares = $activos->where('estado_fisico', 'R')->count();
         $totalMalos = $activos->whereIn('estado_fisico', ['M', 'FF'])->count();
 
-        $categorias = Categoria::where('id_ambiente', $ambiente->id_ambiente ?? null)->get();
+        $categorias = Categoria::query()
+            ->whereNull('id_ambiente')
+            ->orWhere('id_ambiente', $ambiente->id_ambiente ?? null)
+            ->orderBy('nombre')
+            ->get();
         $fuentes = FuenteFinanciamiento::orderBy('nombre')->get();
         $usuarios = User::where('estado', 'ACTIVO')->orderBy('nombre_completo')->get();
         $carreras = Carrera::orderBy('nombre')->get();
@@ -367,7 +384,7 @@ class ActivoController extends Controller
 
         return view('activos.edit', [
             'activo' => $activo,
-            'categorias' => Categoria::orderBy('nombre')->get(),
+            'categorias' => Categoria::orderBy('id_categoria')->get(),
             'ambientes' => Ambiente::with('carrera')->orderBy('nombre')->get(),
             'fuentes' => FuenteFinanciamiento::orderBy('nombre')->get(),
         ]);
@@ -433,7 +450,7 @@ class ActivoController extends Controller
             return response()->json(['success' => true, 'message' => 'Activo actualizado correctamente.']);
         }
 
-        return redirect()->route('categorias.show', $activo->id_categoria)
+        return redirect()->route('ambientes.show', $activo->id_ambiente)
             ->with('success', 'Activo actualizado correctamente.');
     }
 
@@ -445,7 +462,7 @@ class ActivoController extends Controller
         $this->authorizeActivoModification();
 
         $activo = ActivoFijo::findOrFail($id);
-        $idCategoria = $activo->id_categoria;
+        $idAmbiente = $activo->id_ambiente;
 
         if ($activo->imagen && Storage::disk('public')->exists($activo->imagen)) {
             Storage::disk('public')->delete($activo->imagen);
@@ -470,7 +487,7 @@ class ActivoController extends Controller
             $activo->delete();
         });
 
-        return redirect()->route('categorias.show', $idCategoria)
+        return redirect()->route('ambientes.show', $idAmbiente)
             ->with('success', 'Activo eliminado correctamente.');
     }
 
@@ -583,7 +600,7 @@ class ActivoController extends Controller
 
     public function descargarQr($id)
     {
-        $activo = ActivoFijo::findOrFail($id);
+        $activo = ActivoFijo::paraUsuario(Auth::user())->findOrFail($id);
 
         if ($activo->ruta_qr && Storage::disk('public')->exists($activo->ruta_qr)) {
             $path = Storage::disk('public')->path($activo->ruta_qr);
@@ -602,11 +619,12 @@ class ActivoController extends Controller
         $tipoBien = $this->tipoBienExportado($request);
 
         $query = ActivoFijo::with(['categoria', 'ambiente.carrera', 'fuente', 'custodio', 'item'])
+            ->paraUsuario(Auth::user())
             ->where('estado_registro', '!=', 'BAJA')
             ->tipoBien($tipoBien);
 
         if ($request->filled('id_ambiente')) {
-            $ambiente = Ambiente::find($request->id_ambiente);
+            $ambiente = Auth::user()->ambientesVisibles()->find($request->id_ambiente);
             $query->where('id_ambiente', $request->id_ambiente);
         }
         if ($request->filled('id_categoria')) {
@@ -640,11 +658,12 @@ class ActivoController extends Controller
         $tipoBien = $this->tipoBienExportado($request);
 
         $query = ActivoFijo::with(['categoria', 'ambiente.carrera', 'fuente', 'custodio', 'item'])
+            ->paraUsuario(Auth::user())
             ->where('estado_registro', '!=', 'BAJA')
             ->tipoBien($tipoBien);
 
         if ($request->filled('id_ambiente')) {
-            $ambiente = Ambiente::find($request->id_ambiente);
+            $ambiente = Auth::user()->ambientesVisibles()->find($request->id_ambiente);
             $query->where('id_ambiente', $request->id_ambiente);
         }
         if ($request->filled('id_categoria')) {
@@ -661,12 +680,61 @@ class ActivoController extends Controller
         }
 
         $activos = $query->orderBy('tipo_bien')->orderBy('nombre')->get();
+        $reportes = $activos->values()->map(function (ActivoFijo $activo, int $index): object {
+            $fecha = $activo->fecha_adquisicion;
+            $caracteristicas = collect([
+                $activo->marca,
+                $activo->modelo,
+                $activo->numero_serie,
+                $activo->descripcion,
+            ])->filter()->implode(', ');
 
-        return response()
-            ->view('reportes.excel.inventario_general', compact('activos', 'tipoBien'))
-            ->header('Content-Type', 'application/vnd.ms-excel; charset=utf-8')
-            ->header('Content-Disposition',
-                'attachment; filename="Inventario_'.$this->sufijoTipoBien($tipoBien).date('Y-m-d').'.xls"');
+            return (object) [
+                'nro' => $index + 1,
+                'codigos' => $activo->codigo_activo,
+                'ids_array' => [$activo->id_activo],
+                'descripcion' => $activo->nombre,
+                'caracteristicas' => $caracteristicas,
+                'cantidad' => 1,
+                'costo_total' => $activo->valor_adquisicion ?? 0,
+                'estado_fisico' => $activo->estado_fisico,
+                'estado_fisico_texto' => match ($activo->estado_fisico) {
+                    'B' => 'BUENO',
+                    'R' => 'REGULAR',
+                    'M' => 'MALO',
+                    'FF' => 'FUERA DE FUNCIONAMIENTO',
+                    default => 'DESCONOCIDO',
+                },
+                'fuente' => $activo->fuente?->nombre,
+                'fuente_codigo' => $activo->fuente?->codigo,
+                'fecha_entrega' => $fecha,
+                'dia' => $fecha?->format('d') ?? '',
+                'mes' => $fecha?->format('m') ?? '',
+                'anio' => $fecha?->format('Y') ?? '',
+                'carrera' => $activo->ambiente?->carrera?->nombre,
+                'observaciones' => $activo->observaciones,
+                'imagen' => $activo->imagen,
+            ];
+        });
+
+        $carrera = $ambiente?->carrera;
+        $nombreArchivo = 'Inventario_'.$this->sufijoTipoBien($tipoBien).date('Y-m-d').'.xls';
+        $contenido = view('reportes.excel.inventario_general', compact(
+            'reportes', 'tipoBien', 'ambiente', 'carrera'
+        ))->render();
+
+        HistorialReporte::create([
+            'id_usuario' => Auth::id(),
+            'tipo_reporte' => 'Inventario de activos',
+            'formato' => 'EXCEL',
+            'nombre_archivo' => $nombreArchivo,
+            'filtros' => $request->only(['tipo_bien', 'id_ambiente', 'id_categoria', 'buscar']),
+        ]);
+
+        return response("\xEF\xBB\xBF".$contenido, 200, [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="'.$nombreArchivo.'"',
+        ]);
     }
 
     private function tipoBienExportado(Request $request): string
@@ -732,39 +800,6 @@ class ActivoController extends Controller
         ];
     }
 
-    public function verGrupo($id_categoria, $nombre)
-    {
-        $categoria = Categoria::with('ambiente.carrera')->findOrFail($id_categoria);
-        $ambiente = $categoria->ambiente;
-        $carrera = $ambiente?->carrera;
-
-        $nombreDecoded = urldecode($nombre);
-
-        $activos = ActivoFijo::paraUsuario(Auth::user())
-            ->where('id_categoria', $categoria->id_categoria)
-            ->where('estado_registro', '!=', 'BAJA')
-            ->where('nombre', 'LIKE', "%{$nombreDecoded}%")
-            ->with(['ambiente', 'custodio', 'fuente'])
-            ->orderBy('codigo_activo')
-            ->get();
-
-        $totalActivos = $activos->count();
-        $totalBuenos = $activos->where('estado_fisico', 'B')->count();
-        $totalRegulares = $activos->where('estado_fisico', 'R')->count();
-        $totalMalos = $activos->whereIn('estado_fisico', ['M', 'FF'])->count();
-
-        $fuentes = FuenteFinanciamiento::orderBy('nombre')->get();
-        $usuarios = User::where('estado', 'ACTIVO')->orderBy('nombre_completo')->get();
-        $carreras = Carrera::orderBy('nombre')->get();
-
-        return view('categorias.grupo', compact(
-            'categoria', 'ambiente', 'carrera',
-            'activos', 'nombreDecoded',
-            'totalActivos', 'totalBuenos', 'totalRegulares', 'totalMalos',
-            'fuentes', 'usuarios', 'carreras'
-        ));
-    }
-
     public function etiqueta($id)
     {
         $activo = $this->activoVisible($id);
@@ -797,9 +832,15 @@ class ActivoController extends Controller
 
         $ids = $request->input('ids', []);
         $idCategoria = $request->input('id_categoria');
+        $idAmbiente = $request->input('id_ambiente');
 
         $query = ActivoFijo::with(['ambiente', 'categoria', 'fuente', 'custodio'])
+            ->paraUsuario(Auth::user())
             ->where('estado_registro', '!=', 'BAJA');
+
+        if ($idAmbiente) {
+            $query->where('id_ambiente', $idAmbiente);
+        }
 
         if (! empty($ids)) {
             $query->whereIn('id_activo', $ids);
@@ -868,6 +909,7 @@ class ActivoController extends Controller
     public function noActivos(Request $request)
     {
         $query = ActivoFijo::with(['categoria', 'ambiente.carrera', 'fuente', 'custodio'])
+            ->paraUsuario(Auth::user())
             ->where('tipo_bien', 'NO_ACTIVO')
             ->where('estado_registro', '!=', 'BAJA');
 
@@ -895,7 +937,10 @@ class ActivoController extends Controller
             'ambiente.carrera',
             'fuenteFinanciamiento',
             'custodioActual',
-        ])->where('estado_registro', '!=', 'BAJA')->findOrFail($id);
+        ])
+            ->paraUsuario(Auth::user())
+            ->where('estado_registro', '!=', 'BAJA')
+            ->findOrFail($id);
 
         return view('activos.tarjeta', compact('activo'));
     }

@@ -12,6 +12,8 @@ use App\Models\HistorialReporte;
 use App\Support\PdfHelper;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
 class ReporteController extends Controller
@@ -35,23 +37,16 @@ class ReporteController extends Controller
         $totalMalos = (clone $queryBase)->where('estado_fisico', 'M')->count();
         $totalFueraServ = (clone $queryBase)->where('estado_fisico', 'FF')->count();
 
-        $carreras = Carrera::when(! $user || ! ($user->esAdmin() || $user->esOperativo()), function ($q) use ($user) {
-            $ids = $user?->idsCarrerasVisibles();
-            if ($ids === null) {
-                return $q;
-            }
+        $idsCarreras = $user->idsCarrerasVisibles();
+        $carreras = Carrera::query()
+            ->when($idsCarreras !== null, fn ($query) => $query->whereIn('id_carrera', $idsCarreras))
+            ->orderBy('nombre')
+            ->get();
 
-            return $q->whereIn('id_carrera', $ids);
-        })->orderBy('nombre')->get();
-
-        $ambientes = Ambiente::with('carrera')->when(! $user || ! ($user->esAdmin() || $user->esOperativo()), function ($q) use ($user) {
-            $ids = $user?->idsAmbientesVisibles();
-            if (empty($ids)) {
-                return $q->whereRaw('1=0');
-            }
-
-            return $q->whereIn('id_ambiente', $ids);
-        })->orderBy('nombre')->get();
+        $ambientes = $user->ambientesVisibles()
+            ->with('carrera')
+            ->orderBy('nombre')
+            ->get();
 
         $categorias = Categoria::orderBy('nombre')->get();
         $historialQuery = HistorialReporte::with('usuario')->latest();
@@ -77,6 +72,7 @@ class ReporteController extends Controller
         $tipoBien = $this->tipoBienReporte($request);
 
         $query = ActivoFijo::query()
+            ->paraUsuario(Auth::user())
             ->selectRaw('
                 GROUP_CONCAT(activos_fijos.codigo_activo ORDER BY activos_fijos.codigo_activo SEPARATOR " ") as codigos,
                 GROUP_CONCAT(activos_fijos.id_activo ORDER BY activos_fijos.id_activo SEPARATOR ",") as ids_array,
@@ -163,8 +159,12 @@ class ReporteController extends Controller
             ];
         });
 
-        $carreras = Carrera::orderBy('nombre')->get();
-        $ambientes = Ambiente::orderBy('nombre')->get();
+        $idsCarreras = Auth::user()->idsCarrerasVisibles();
+        $carreras = Carrera::query()
+            ->when($idsCarreras !== null, fn ($query) => $query->whereIn('id_carrera', $idsCarreras))
+            ->orderBy('nombre')
+            ->get();
+        $ambientes = Auth::user()->ambientesVisibles()->orderBy('nombre')->get();
         $fuentes = FuenteFinanciamiento::orderBy('nombre')->get();
 
         return view('reportes.inventario_general', compact('reportes', 'carreras', 'ambientes', 'fuentes', 'tipoBien'));
@@ -175,6 +175,7 @@ class ReporteController extends Controller
         $tipoBien = $this->tipoBienReporte($request);
 
         $query = ActivoFijo::query()
+            ->paraUsuario(Auth::user())
             ->selectRaw('
                 GROUP_CONCAT(activos_fijos.codigo_activo ORDER BY activos_fijos.codigo_activo SEPARATOR " ") as codigos,
                 activos_fijos.nombre as descripcion,
@@ -264,10 +265,10 @@ class ReporteController extends Controller
         $ambiente = null;
         $carrera = null;
         if ($request->filled('id_ambiente')) {
-            $ambiente = Ambiente::with('carrera')->find($request->id_ambiente);
+            $ambiente = $this->ambienteVisible($request->id_ambiente);
             $carrera = $ambiente?->carrera;
         } elseif ($request->filled('id_carrera')) {
-            $carrera = Carrera::find($request->id_carrera);
+            $carrera = $this->carreraVisible($request->id_carrera);
         }
 
         $nombreArchivo = 'Inventario_'.$this->sufijoTipoBien($tipoBien).'General_'.date('Y-m-d').'.pdf';
@@ -282,6 +283,7 @@ class ReporteController extends Controller
         $tipoBien = $this->tipoBienReporte($request);
 
         $query = ActivoFijo::query()
+            ->paraUsuario(Auth::user())
             ->selectRaw('
                 GROUP_CONCAT(activos_fijos.codigo_activo ORDER BY activos_fijos.codigo_activo SEPARATOR " ") as codigos,
                 activos_fijos.nombre as descripcion,
@@ -367,13 +369,23 @@ class ReporteController extends Controller
             ];
         });
 
-        $nombreArchivo = 'Inventario_'.$this->sufijoTipoBien($tipoBien).'General_'.date('Y-m-d').'.xls';
-        $this->registrarDescarga('Inventario general', 'EXCEL', $nombreArchivo, $request);
+        $ambiente = $request->filled('id_ambiente')
+            ? $this->ambienteVisible($request->input('id_ambiente'))
+            : null;
+        $carrera = $ambiente?->carrera;
+        if (! $ambiente && $request->filled('id_carrera')) {
+            $carrera = $this->carreraVisible($request->input('id_carrera'));
+        }
 
-        return response()
-            ->view('reportes.excel.inventario_general', compact('reportes', 'tipoBien'))
-            ->header('Content-Type', 'application/vnd.ms-excel; charset=utf-8')
-            ->header('Content-Disposition', 'attachment; filename="'.$nombreArchivo.'"');
+        $nombreArchivo = 'Inventario_'.$this->sufijoTipoBien($tipoBien).'General_'.date('Y-m-d').'.xls';
+
+        return $this->respuestaExcel(
+            'reportes.excel.inventario_general',
+            compact('reportes', 'tipoBien', 'ambiente', 'carrera'),
+            'Inventario general',
+            $nombreArchivo,
+            $request
+        );
     }
 
     private function tipoBienReporte(Request $request): string
@@ -400,6 +412,7 @@ class ReporteController extends Controller
         $ambiente = $this->ambienteVisible($id_ambiente);
 
         $query = ActivoFijo::query()
+            ->paraUsuario(Auth::user())
             ->selectRaw('
                 GROUP_CONCAT(activos_fijos.codigo_activo ORDER BY activos_fijos.codigo_activo SEPARATOR " ") as codigos,
                 activos_fijos.nombre as descripcion,
@@ -472,22 +485,59 @@ class ReporteController extends Controller
 
     public function porAmbientePdf($id_ambiente)
     {
-        $ambiente = Ambiente::with('carrera', 'custodios')->findOrFail($id_ambiente);
+        $ambiente = $this->ambienteVisible($id_ambiente, true);
 
         // Reutiliza la misma lógica de consulta por ambiente
         return $this->porAmbientePdfAction($ambiente);
     }
 
-    public function porAmbienteExcel($id_ambiente)
+    public function porAmbienteExcel(Request $request, int|string $id_ambiente): Response
     {
         $ambiente = $this->ambienteVisible($id_ambiente);
+        $reportes = $this->reportesPorAmbiente($ambiente);
         $nombreArchivo = 'Inventario_Ambiente_'.preg_replace('/[^A-Za-z0-9_\-]/', '_', $ambiente->nombre).'_'.date('Y-m-d').'.xls';
-        $this->registrarDescarga('Inventario por ambiente', 'EXCEL', $nombreArchivo);
 
-        return response()
-            ->view('reportes.excel.por_ambiente', compact('ambiente'))
-            ->header('Content-Type', 'application/vnd.ms-excel; charset=utf-8')
-            ->header('Content-Disposition', 'attachment; filename="'.$nombreArchivo.'"');
+        return $this->respuestaExcel(
+            'reportes.excel.por_ambiente',
+            compact('ambiente', 'reportes'),
+            'Inventario por ambiente',
+            $nombreArchivo,
+            $request
+        );
+    }
+
+    public function porAula(Request $request, int|string $id_ambiente): View
+    {
+        $ambiente = $this->ambienteVisible($id_ambiente);
+        $datos = $this->datosPorAula($ambiente, $request);
+
+        return view('reportes.por_aula', array_merge($datos, compact('ambiente')));
+    }
+
+    public function porAulaPdf(Request $request, int|string $id_ambiente): Response
+    {
+        $ambiente = $this->ambienteVisible($id_ambiente);
+        $datos = $this->datosPorAula($ambiente, $request);
+        $nombreArchivo = 'Inventario_Aula_'.preg_replace('/[^A-Za-z0-9_\-]/', '_', $ambiente->nombre).'_'.date('Y-m-d').'.pdf';
+        $this->registrarDescarga('Inventario por aula', 'PDF', $nombreArchivo, $request);
+
+        return PdfHelper::oficio('reportes.pdf.por_aula', array_merge($datos, compact('ambiente')), 'landscape')
+            ->stream($nombreArchivo);
+    }
+
+    public function porAulaExcel(Request $request, int|string $id_ambiente): Response
+    {
+        $ambiente = $this->ambienteVisible($id_ambiente);
+        $datos = $this->datosPorAula($ambiente, $request);
+        $nombreArchivo = 'Inventario_Aula_'.preg_replace('/[^A-Za-z0-9_\-]/', '_', $ambiente->nombre).'_'.date('Y-m-d').'.xls';
+
+        return $this->respuestaExcel(
+            'reportes.excel.por_aula',
+            array_merge($datos, compact('ambiente')),
+            'Inventario por aula',
+            $nombreArchivo,
+            $request
+        );
     }
 
     // ============================================================
@@ -498,6 +548,7 @@ class ReporteController extends Controller
         $tipoBien = $this->tipoBienReporte($request);
 
         $query = ActivoFijo::query()
+            ->paraUsuario(Auth::user())
             ->selectRaw('
                 GROUP_CONCAT(activos_fijos.codigo_activo ORDER BY activos_fijos.codigo_activo SEPARATOR " ") as codigos,
                 activos_fijos.nombre as descripcion,
@@ -579,7 +630,7 @@ class ReporteController extends Controller
 
         $ambiente = null;
         if ($request->filled('id_ambiente')) {
-            $ambiente = Ambiente::with('carrera', 'custodios')->find($request->id_ambiente);
+            $ambiente = $this->ambienteVisible($request->id_ambiente, true);
         }
 
         $nombreArchivo = 'Inventario_Filtro_'.date('Y-m-d').'.pdf';
@@ -594,6 +645,7 @@ class ReporteController extends Controller
         $tipoBien = $this->tipoBienReporte($request);
 
         $query = ActivoFijo::query()
+            ->paraUsuario(Auth::user())
             ->selectRaw('
                 GROUP_CONCAT(activos_fijos.codigo_activo ORDER BY activos_fijos.codigo_activo SEPARATOR " ") as codigos,
                 activos_fijos.nombre as descripcion,
@@ -674,17 +726,28 @@ class ReporteController extends Controller
         });
 
         $nombreArchivo = 'Inventario_Filtro_'.date('Y-m-d').'.xls';
-        $this->registrarDescarga('Inventario filtrado', 'EXCEL', $nombreArchivo, $request);
+        $ambiente = null;
+        $carrera = null;
+        if ($request->filled('id_ambiente')) {
+            $ambiente = $this->ambienteVisible($request->input('id_ambiente'));
+            $carrera = $ambiente->carrera;
+        } elseif ($request->filled('id_carrera')) {
+            $carrera = $this->carreraVisible($request->input('id_carrera'));
+        }
 
-        return response()
-            ->view('reportes.excel.inventario_general', compact('reportes', 'tipoBien'))
-            ->header('Content-Type', 'application/vnd.ms-excel; charset=utf-8')
-            ->header('Content-Disposition', 'attachment; filename="'.$nombreArchivo.'"');
+        return $this->respuestaExcel(
+            'reportes.excel.inventario_general',
+            compact('reportes', 'tipoBien', 'ambiente', 'carrera'),
+            'Inventario filtrado',
+            $nombreArchivo,
+            $request
+        );
     }
 
     protected function porAmbientePdfAction(Ambiente $ambiente)
     {
         $query = ActivoFijo::query()
+            ->paraUsuario(Auth::user())
             ->selectRaw('
                 GROUP_CONCAT(activos_fijos.codigo_activo ORDER BY activos_fijos.codigo_activo SEPARATOR " ") as codigos,
                 activos_fijos.nombre as descripcion,
@@ -757,6 +820,184 @@ class ReporteController extends Controller
         $pdf = PdfHelper::oficio('reportes.pdf.por_ambiente', compact('ambiente', 'reportes'), 'landscape');
 
         return $pdf->stream($nombreArchivo);
+    }
+
+    /**
+     * @return Collection<int, object>
+     */
+    private function reportesPorAmbiente(Ambiente $ambiente): Collection
+    {
+        $activos = ActivoFijo::query()
+            ->with('fuente')
+            ->paraUsuario(Auth::user())
+            ->where('id_ambiente', $ambiente->id_ambiente)
+            ->where('estado_registro', '!=', 'BAJA')
+            ->orderBy('codigo_activo')
+            ->get();
+
+        return $activos
+            ->groupBy(fn (ActivoFijo $activo) => serialize([
+                $activo->nombre,
+                $activo->marca,
+                $activo->modelo,
+                $activo->descripcion,
+                $activo->estado_fisico,
+                $activo->id_fuente,
+                $activo->observaciones,
+                $activo->imagen,
+            ]))
+            ->values()
+            ->map(function (Collection $grupo, int $index) use ($ambiente): object {
+                /** @var ActivoFijo $primero */
+                $primero = $grupo->first();
+                $fecha = $grupo->pluck('fecha_adquisicion')->filter()->sort()->first();
+                $caracteristicas = collect([
+                    $primero->marca,
+                    $primero->modelo,
+                    $grupo->pluck('numero_serie')->filter()->unique()->sort()->implode(', '),
+                    $primero->descripcion,
+                ])->filter()->implode(', ');
+
+                if (is_string($fecha)) {
+                    $fecha = Carbon::parse($fecha);
+                }
+
+                return (object) [
+                    'nro' => $index + 1,
+                    'codigos' => $grupo->pluck('codigo_activo')->implode(' '),
+                    'ids_array' => $grupo->pluck('id_activo')->all(),
+                    'descripcion' => $primero->nombre,
+                    'caracteristicas' => $caracteristicas,
+                    'cantidad' => $grupo->count(),
+                    'costo_total' => $grupo->sum('valor_adquisicion'),
+                    'estado_fisico' => $primero->estado_fisico,
+                    'estado_fisico_texto' => $this->estadoFisicoTexto($primero->estado_fisico),
+                    'fuente' => $primero->fuente?->nombre,
+                    'fuente_codigo' => $primero->fuente?->codigo ?? '',
+                    'fecha_entrega' => $fecha,
+                    'dia' => $fecha?->format('d') ?? '',
+                    'mes' => $fecha?->format('m') ?? '',
+                    'anio' => $fecha?->format('Y') ?? '',
+                    'carrera' => $ambiente->carrera?->nombre,
+                    'observaciones' => $primero->observaciones,
+                    'imagen' => $primero->imagen,
+                ];
+            });
+    }
+
+    /**
+     * @return array{
+     *     activos: Collection<int, ActivoFijo>,
+     *     agrupados: Collection<int, object>,
+     *     stats: array{total: int, buenos: int, regulares: int, malos: int, fuera: int},
+     *     categorias: Collection<int, Categoria>
+     * }
+     */
+    private function datosPorAula(Ambiente $ambiente, Request $request): array
+    {
+        $query = ActivoFijo::query()
+            ->with(['fuente', 'categoria'])
+            ->paraUsuario(Auth::user())
+            ->where('id_ambiente', $ambiente->id_ambiente)
+            ->where('estado_registro', '!=', 'BAJA');
+
+        if ($request->filled('nombre')) {
+            $query->where('nombre', 'like', '%'.$request->input('nombre').'%');
+        }
+
+        if ($request->filled('categoria_id')) {
+            $query->where('id_categoria', $request->input('categoria_id'));
+        }
+
+        if ($request->filled('estado_fisico')) {
+            $query->where('estado_fisico', $request->input('estado_fisico'));
+        }
+
+        $activos = $query->orderBy('codigo_activo')->get();
+        $agrupados = $activos
+            ->groupBy(fn (ActivoFijo $activo) => serialize([
+                $activo->nombre,
+                $activo->descripcion,
+                $activo->marca,
+                $activo->modelo,
+                $activo->estado_fisico,
+                $activo->id_fuente,
+                $activo->fecha_adquisicion?->format('Y'),
+                $activo->observaciones,
+            ]))
+            ->values()
+            ->map(function (Collection $grupo): object {
+                /** @var ActivoFijo $primero */
+                $primero = $grupo->first();
+
+                return (object) [
+                    'codigos' => $grupo->pluck('codigo_activo')->implode("\n"),
+                    'nombre' => $primero->nombre,
+                    'descripcion' => $primero->descripcion,
+                    'marca' => $primero->marca,
+                    'modelo' => $primero->modelo,
+                    'cantidad' => $grupo->count(),
+                    'estado_fisico' => $primero->estado_fisico,
+                    'estado_texto' => $this->estadoFisicoTexto($primero->estado_fisico),
+                    'fuente_codigo' => $primero->fuente?->codigo ?? $primero->fuente?->nombre ?? '—',
+                    'gestion' => $primero->fecha_adquisicion?->format('Y') ?? '—',
+                    'observaciones' => $primero->observaciones,
+                ];
+            });
+
+        $stats = [
+            'total' => $activos->count(),
+            'buenos' => $activos->where('estado_fisico', 'B')->count(),
+            'regulares' => $activos->where('estado_fisico', 'R')->count(),
+            'malos' => $activos->where('estado_fisico', 'M')->count(),
+            'fuera' => $activos->where('estado_fisico', 'FF')->count(),
+        ];
+
+        $categorias = Categoria::query()
+            ->whereIn('id_categoria', $activos->pluck('id_categoria')->unique())
+            ->orderBy('nombre')
+            ->get();
+
+        return compact('activos', 'agrupados', 'stats', 'categorias');
+    }
+
+    /**
+     * @param  array<string, mixed>  $datos
+     */
+    private function respuestaExcel(
+        string $vista,
+        array $datos,
+        string $tipoReporte,
+        string $nombreArchivo,
+        ?Request $request = null
+    ): Response {
+        $contenido = view($vista, $datos)->render();
+        $this->registrarDescarga($tipoReporte, 'EXCEL', $nombreArchivo, $request);
+
+        return response("\xEF\xBB\xBF".$contenido, 200, [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="'.$nombreArchivo.'"',
+        ]);
+    }
+
+    private function ambienteVisible(int|string $id, bool $incluirCustodios = false): Ambiente
+    {
+        $relaciones = $incluirCustodios ? ['carrera', 'custodios'] : ['carrera'];
+
+        return Auth::user()
+            ->ambientesVisibles()
+            ->with($relaciones)
+            ->findOrFail($id);
+    }
+
+    private function carreraVisible(int|string $id): Carrera
+    {
+        $user = Auth::user();
+        $idsCarreras = $user->idsCarrerasVisibles();
+
+        return Carrera::query()
+            ->when($idsCarreras !== null, fn ($query) => $query->whereIn('id_carrera', $idsCarreras))
+            ->findOrFail($id);
     }
 
     private function registrarDescarga(string $tipoReporte, string $formato, string $nombreArchivo, ?Request $request = null): void

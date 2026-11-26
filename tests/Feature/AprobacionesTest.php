@@ -5,8 +5,16 @@ namespace Tests\Feature;
 use App\Models\ActaBaja;
 use App\Models\ActaTransferencia;
 use App\Models\ActivoFijo;
+use App\Models\Ambiente;
+use App\Models\Carrera;
+use App\Models\Categoria;
+use App\Models\FuenteFinanciamiento;
 use App\Models\User;
+use App\Models\VerificacionFisica;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -20,59 +28,66 @@ class AprobacionesTest extends TestCase
 
     protected function activo(array $atributos = []): ActivoFijo
     {
-        $categoria = \App\Models\Categoria::firstOrCreate(
-            ['codigo' => 'EQP-TEST'],
-            ['nombre' => 'Equipos', 'id_ambiente' => $this->ambiente->id_ambiente]
+        $categoria = Categoria::firstOrCreate(
+            ['nombre' => 'Equipos'],
+            ['id_ambiente' => $this->ambiente->id_ambiente]
         );
 
-        $fuente = \App\Models\FuenteFinanciamiento::firstOrCreate(
+        $fuente = FuenteFinanciamiento::firstOrCreate(
             ['nombre' => 'Tesorería']
         );
 
         return ActivoFijo::create(array_merge([
-            'codigo_activo'     => 'TPM-'.strtoupper(Str::random(8)),
-            'nombre'            => 'Laptop',
-            'id_categoria'      => $categoria->id_categoria,
-            'id_ambiente'       => $this->ambiente->id_ambiente,
-            'id_fuente'         => $fuente->id_fuente,
-            'id_custodio'       => $this->custodio->id_usuario,
-            'tipo_bien'         => 'ACTIVO_FIJO',
-            'marca'             => 'Dell',
-            'modelo'            => 'Latitude',
-            'numero_serie'      => (string) fake()->unique()->numerify('########'),
-            'estado_registro'   => 'ASIGNADO',
+            'codigo_activo' => 'TPM-'.strtoupper(Str::random(8)),
+            'nombre' => 'Laptop',
+            'id_categoria' => $categoria->id_categoria,
+            'id_ambiente' => $this->ambiente->id_ambiente,
+            'id_fuente' => $fuente->id_fuente,
+            'id_custodio' => $this->custodio->id_usuario,
+            'tipo_bien' => 'ACTIVO_FIJO',
+            'marca' => 'Dell',
+            'modelo' => 'Latitude',
+            'numero_serie' => (string) fake()->unique()->numerify('########'),
+            'estado_registro' => 'ASIGNADO',
         ], $atributos));
     }
 
     protected $carrera;
+
     protected $ambiente;
+
     protected $otroAmbiente;
+
     protected $admin;
+
     protected $inventariador;
+
     protected $custodio;
+
     protected $jefe;
+
     protected $rector;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->carrera = \App\Models\Carrera::create(['nombre' => 'Sistemas Informáticos', 'codigo' => 'SIF']);
-        $otra = \App\Models\Carrera::create(['nombre' => 'Contabilidad', 'codigo' => 'CON']);
+        $this->carrera = Carrera::create(['nombre' => 'Sistemas Informáticos', 'codigo' => 'SIF']);
+        $otra = Carrera::create(['nombre' => 'Contabilidad', 'codigo' => 'CON']);
 
-        $this->ambiente = \App\Models\Ambiente::create([
+        $this->ambiente = Ambiente::create([
             'nombre' => 'Laboratorio 3', 'codigo' => 'LAB-3', 'id_carrera' => $this->carrera->id_carrera,
         ]);
 
-        $this->otroAmbiente = \App\Models\Ambiente::create([
+        $this->otroAmbiente = Ambiente::create([
             'nombre' => 'Laboratorio 2', 'codigo' => 'LAB-2', 'id_carrera' => $otra->id_carrera,
         ]);
 
-        $this->admin         = User::factory()->admin()->create();
+        $this->admin = User::factory()->admin()->create();
         $this->inventariador = User::factory()->inventariador()->create();
-        $this->custodio      = User::factory()->custodio()->create(['id_carrera' => $this->carrera->id_carrera]);
-        $this->jefe          = User::factory()->jefeCarrera()->create(['id_carrera' => $this->carrera->id_carrera]);
-        $this->rector        = User::factory()->rector()->create();
+        $this->custodio = User::factory()->custodio()->create(['id_carrera' => $this->carrera->id_carrera]);
+        $this->jefe = User::factory()->jefeCarrera()->create(['id_carrera' => $this->carrera->id_carrera]);
+        $this->rector = User::factory()->rector()->create();
     }
 
     public function test_los_paneles_de_actas_se_abren_sin_errores(): void
@@ -94,21 +109,62 @@ class AprobacionesTest extends TestCase
             ->assertOk();
     }
 
+    public function test_custodios_por_ambiente_muestra_usuarios_activos_si_no_hay_asignados(): void
+    {
+        $response = $this->actingAs($this->inventariador)
+            ->getJson(route('actas.transferencia.custodios', $this->otroAmbiente->id_ambiente));
+
+        $response->assertOk()
+            ->assertJsonPath('fallback', true)
+            ->assertJsonFragment(['id' => $this->rector->id_usuario]);
+    }
+
+    public function test_formulario_muestra_usuarios_activos_al_preseleccionar_ambiente_sin_custodios(): void
+    {
+        $response = $this->actingAs($this->inventariador)
+            ->get(route('actas.transferencia.create', ['id_ambiente_destino' => $this->otroAmbiente->id_ambiente]));
+
+        $response->assertOk()
+            ->assertSee($this->rector->nombre_completo, false);
+    }
+
+    public function test_no_registra_transferencia_con_fecha_futura(): void
+    {
+        $activo = $this->activo();
+
+        $response = $this->actingAs($this->inventariador)
+            ->from(route('actas.transferencia.create'))
+            ->post(route('actas.transferencia.store'), [
+                'id_activos' => [$activo->id_activo],
+                'id_ambiente_destino' => $this->otroAmbiente->id_ambiente,
+                'id_custodio' => $this->rector->id_usuario,
+                'fecha_transferencia' => now()->addDay()->toDateString(),
+            ]);
+
+        $response->assertSessionHasErrors(['fecha_transferencia']);
+        $this->assertDatabaseCount('actas_transferencia', 0);
+    }
+
     public function test_una_transferencia_queda_pendiente_y_el_bien_no_se_mueve_hasta_la_aprobacion(): void
     {
         $activo = $this->activo();
 
         $response = $this->actingAs($this->inventariador)->post(route('actas.transferencia.store'), [
-            'id_activo'           => $activo->id_activo,
-            'id_destino_ambiente' => $this->otroAmbiente->id_ambiente,
-            'id_custodio_nuevo'   => $this->rector->id_usuario,
+            'id_activos' => [$activo->id_activo],
+            'id_ambiente_destino' => $this->otroAmbiente->id_ambiente,
+            'id_custodio' => $this->rector->id_usuario,
             'fecha_transferencia' => now()->toDateString(),
         ]);
 
+        $response->assertSessionHasNoErrors();
         $acta = ActaTransferencia::firstOrFail();
 
         $response->assertRedirect(route('actas.transferencia.show', $acta->id_acta_transferencia));
         $this->assertSame(ActaTransferencia::ESTADO_PENDIENTE, $acta->estado);
+        $this->assertDatabaseHas('acta_transferencia_activo', [
+            'id_acta_transferencia' => $acta->id_acta_transferencia,
+            'id_activo' => $activo->id_activo,
+        ]);
 
         // El bien sigue en su ambiente y con su custodio: solo espera.
         $activo->refresh();
@@ -130,11 +186,11 @@ class AprobacionesTest extends TestCase
         $activo = $this->activo(['estado_registro' => 'ASIGNADO']);
 
         $this->actingAs($this->inventariador)->post(route('actas.transferencia.store'), [
-            'id_activo'           => $activo->id_activo,
-            'id_destino_ambiente' => $this->otroAmbiente->id_ambiente,
-            'id_custodio_nuevo'   => $this->rector->id_usuario,
+            'id_activos' => [$activo->id_activo],
+            'id_ambiente_destino' => $this->otroAmbiente->id_ambiente,
+            'id_custodio' => $this->rector->id_usuario,
             'fecha_transferencia' => now()->toDateString(),
-        ]);
+        ])->assertSessionHasNoErrors();
 
         $acta = ActaTransferencia::firstOrFail();
 
@@ -150,11 +206,11 @@ class AprobacionesTest extends TestCase
         $activo = $this->activo();
 
         $this->actingAs($this->inventariador)->post(route('actas.transferencia.store'), [
-            'id_activo'           => $activo->id_activo,
-            'id_destino_ambiente' => $this->otroAmbiente->id_ambiente,
-            'id_custodio_nuevo'   => $this->rector->id_usuario,
+            'id_activos' => [$activo->id_activo],
+            'id_ambiente_destino' => $this->otroAmbiente->id_ambiente,
+            'id_custodio' => $this->rector->id_usuario,
             'fecha_transferencia' => now()->toDateString(),
-        ]);
+        ])->assertSessionHasNoErrors();
 
         $acta = ActaTransferencia::firstOrFail();
 
@@ -174,7 +230,7 @@ class AprobacionesTest extends TestCase
         $activo = $this->activo();
 
         $this->actingAs($this->inventariador)->post(route('actas.baja.store'), [
-            'activo_ids'  => [$activo->id_activo],
+            'activo_ids' => [$activo->id_activo],
             'motivo_baja' => 'Equipo averiado.',
         ])->assertSessionHasNoErrors();
 
@@ -193,20 +249,20 @@ class AprobacionesTest extends TestCase
 
     public function test_una_sustitucion_da_de_alta_el_equipo_nuevo_y_guarda_el_viejo_en_el_almacen(): void
     {
-        $almacen = \App\Models\Ambiente::create([
+        $almacen = Ambiente::create([
             'nombre' => 'Almacén', 'codigo' => 'ALM-1', 'id_carrera' => $this->carrera->id_carrera,
         ]);
 
         $viejo = $this->activo(['codigo_activo' => 'TPM-VIEJO-1']);
 
         $this->actingAs($this->inventariador)->post(route('actas.baja.store'), [
-            'activo_ids'         => [$viejo->id_activo],
-            'motivo_baja'        => 'Se cambia por el repuesto del almacén.',
-            'es_sustitucion'     => 1,
-            'sustituto_de'       => $viejo->id_activo,
-            'sustituto_codigo'   => 'TPM-NUEVO-1',
-            'sustituto_nombre'   => 'Laptop de repuesto',
-            'sustituto_marca'    => 'HP',
+            'activo_ids' => [$viejo->id_activo],
+            'motivo_baja' => 'Se cambia por el repuesto del almacén.',
+            'es_sustitucion' => 1,
+            'sustituto_de' => $viejo->id_activo,
+            'sustituto_codigo' => 'TPM-NUEVO-1',
+            'sustituto_nombre' => 'Laptop de repuesto',
+            'sustituto_marca' => 'HP',
         ]);
 
         $acta = ActaBaja::firstOrFail();
@@ -232,14 +288,20 @@ class AprobacionesTest extends TestCase
         $suyo = $this->activo(['codigo_activo' => 'TPM-SUYO-1']);
         $ajeno = $this->activo([
             'codigo_activo' => 'TPM-AJENO-1',
-            'id_ambiente'   => $this->otroAmbiente->id_ambiente,
-            'id_custodio'   => $this->rector->id_usuario,
+            'id_ambiente' => $this->otroAmbiente->id_ambiente,
+            'id_custodio' => $this->rector->id_usuario,
         ]);
 
         $vistos = ActivoFijo::paraUsuario($this->custodio)->pluck('codigo_activo');
 
         $this->assertTrue($vistos->contains('TPM-SUYO-1'));
         $this->assertFalse($vistos->contains('TPM-AJENO-1'));
+
+        $this->actingAs($this->custodio)
+            ->get(route('activos.index'))
+            ->assertOk()
+            ->assertSee('TPM-SUYO-1')
+            ->assertDontSee('TPM-AJENO-1');
 
         $this->actingAs($this->custodio)
             ->get(route('activos.tarjeta', $ajeno->id_activo))
@@ -251,8 +313,8 @@ class AprobacionesTest extends TestCase
         $deSuCarrera = $this->activo(['codigo_activo' => 'TPM-SIF-1']);
         $deOtra = $this->activo([
             'codigo_activo' => 'TPM-CON-1',
-            'id_ambiente'   => $this->otroAmbiente->id_ambiente,
-            'id_custodio'   => $this->rector->id_usuario,
+            'id_ambiente' => $this->otroAmbiente->id_ambiente,
+            'id_custodio' => $this->rector->id_usuario,
         ]);
 
         $vistos = ActivoFijo::paraUsuario($this->jefe)->pluck('codigo_activo');
@@ -260,8 +322,46 @@ class AprobacionesTest extends TestCase
         $this->assertTrue($vistos->contains('TPM-SIF-1'));
         $this->assertFalse($vistos->contains('TPM-CON-1'));
 
-        $this->actingAs($this->jefe)->get(route('ambientes.detalle', $this->otroAmbiente->id_ambiente))
+        $this->actingAs($this->jefe)
+            ->get(route('activos.index'))
+            ->assertOk()
+            ->assertSee('TPM-SIF-1')
+            ->assertDontSee('TPM-CON-1');
+
+        $this->actingAs($this->jefe)->get(route('ambientes.show', [
+            'id_carrera' => $this->otroAmbiente->id_carrera,
+            'id' => $this->otroAmbiente->id_ambiente,
+        ]))
             ->assertNotFound();
+    }
+
+    public function test_el_rector_ve_todo_pero_solo_verifica_con_permiso_de_la_administradora(): void
+    {
+        $deSuCarrera = $this->activo(['codigo_activo' => 'TPM-RECTOR-SIF']);
+        $deOtraCarrera = $this->activo([
+            'codigo_activo' => 'TPM-RECTOR-CON',
+            'id_ambiente' => $this->otroAmbiente->id_ambiente,
+            'id_custodio' => $this->rector->id_usuario,
+        ]);
+
+        $this->actingAs($this->rector)
+            ->get(route('activos.index'))
+            ->assertOk()
+            ->assertSee($deSuCarrera->codigo_activo)
+            ->assertSee($deOtraCarrera->codigo_activo);
+
+        $this->get(route('verificaciones.index'))->assertForbidden();
+
+        $this->actingAs($this->admin)
+            ->patch(route('usuarios.toggle_verificar', $this->rector->id_usuario))
+            ->assertRedirect();
+
+        $this->rector->refresh();
+        $this->assertTrue($this->rector->puede_verificar);
+
+        $this->actingAs($this->rector)
+            ->get(route('verificaciones.index'))
+            ->assertOk();
     }
 
     public function test_un_rol_de_solo_lectura_no_registra_verificaciones_ni_solicita_bajas(): void
@@ -269,16 +369,20 @@ class AprobacionesTest extends TestCase
         $activo = $this->activo();
 
         $this->actingAs($this->custodio)
+            ->get(route('verificaciones.index'))
+            ->assertForbidden();
+
+        $this->actingAs($this->custodio)
             ->post(route('verificaciones.guardarItem'), [
-                'activo_id'           => $activo->id_activo,
+                'activo_id' => $activo->id_activo,
                 'ambiente_escaneo_id' => $this->ambiente->id_ambiente,
-                'es_correspondencia'  => 1,
+                'es_correspondencia' => 1,
             ])
             ->assertForbidden();
 
         $this->actingAs($this->custodio)
             ->post(route('actas.baja.store'), [
-                'activo_ids'  => [$activo->id_activo],
+                'activo_ids' => [$activo->id_activo],
                 'motivo_baja' => 'No me sirve.',
             ])
             ->assertForbidden();
@@ -292,12 +396,12 @@ class AprobacionesTest extends TestCase
 
         $this->actingAs($this->admin)->put(route('usuarios.update', $ayudante->id_usuario), [
             'nombre_completo' => $ayudante->nombre_completo,
-            'ci'              => $ayudante->ci,
-            'email'           => $ayudante->email,
-            'cargo'           => $ayudante->cargo,
-            'unidad'          => $ayudante->unidad,
-            'rol'             => User::ROL_AYUDANTE,
-            'estado'          => 'INACTIVO',
+            'ci' => $ayudante->ci,
+            'email' => $ayudante->email,
+            'cargo' => $ayudante->cargo,
+            'unidad' => $ayudante->unidad,
+            'rol' => User::ROL_AYUDANTE,
+            'estado' => 'INACTIVO',
         ])->assertSessionHasNoErrors();
 
         $this->assertSame('INACTIVO', $ayudante->fresh()->estado);
@@ -313,12 +417,12 @@ class AprobacionesTest extends TestCase
     {
         $this->actingAs($this->admin)->put(route('usuarios.update', $this->admin->id_usuario), [
             'nombre_completo' => $this->admin->nombre_completo,
-            'ci'              => $this->admin->ci,
-            'email'           => $this->admin->email,
-            'cargo'           => $this->admin->cargo,
-            'unidad'          => $this->admin->unidad,
-            'rol'             => User::ROL_ADMINISTRADOR,
-            'estado'          => 'INACTIVO',
+            'ci' => $this->admin->ci,
+            'email' => $this->admin->email,
+            'cargo' => $this->admin->cargo,
+            'unidad' => $this->admin->unidad,
+            'rol' => User::ROL_ADMINISTRADOR,
+            'estado' => 'INACTIVO',
         ])->assertSessionHas('error');
 
         $this->assertSame('ACTIVO', $this->admin->fresh()->estado);
@@ -328,30 +432,35 @@ class AprobacionesTest extends TestCase
     {
         $activo = $this->activo();
 
+        $this->actingAs($this->admin)
+            ->patch(route('usuarios.toggle_verificar', $this->inventariador->id_usuario))
+            ->assertRedirect();
+        $this->inventariador->refresh();
+
         $this->actingAs($this->inventariador)->post(route('verificaciones.guardarItem'), [
-            'activo_id'           => $activo->id_activo,
+            'activo_id' => $activo->id_activo,
             'ambiente_escaneo_id' => $this->ambiente->id_ambiente,
-            'es_correspondencia'  => 1,
-            'estado_fisico'       => 'B',
+            'es_correspondencia' => 1,
+            'estado_fisico' => 'B',
         ])->assertOk();
 
-        $verificacion = \App\Models\VerificacionFisica::firstOrFail();
+        $verificacion = VerificacionFisica::firstOrFail();
 
         $this->actingAs($this->admin)->post(route('verificaciones-aprobacion.aprobar', $verificacion->id_verificacion));
 
-        $this->assertSame(\App\Models\VerificacionFisica::ESTADO_APROBADA, $verificacion->fresh()->estado_aprobacion);
+        $this->assertSame(VerificacionFisica::ESTADO_APROBADA, $verificacion->fresh()->estado_aprobacion);
 
         // Segundo escaneo: la aprobación anterior se conserva.
         $this->actingAs($this->inventariador)->post(route('verificaciones.guardarItem'), [
-            'activo_id'           => $activo->id_activo,
+            'activo_id' => $activo->id_activo,
             'ambiente_escaneo_id' => $this->ambiente->id_ambiente,
-            'es_correspondencia'  => 1,
-            'estado_fisico'       => 'R',
+            'es_correspondencia' => 1,
+            'estado_fisico' => 'R',
         ])->assertOk();
 
-        $this->assertSame(2, \App\Models\VerificacionFisica::count());
-        $this->assertSame(\App\Models\VerificacionFisica::ESTADO_APROBADA, $verificacion->fresh()->estado_aprobacion);
-        $this->assertSame(\App\Models\VerificacionFisica::ESTADO_PENDIENTE, \App\Models\VerificacionFisica::latest('id_verificacion')->first()->estado_aprobacion);
+        $this->assertSame(2, VerificacionFisica::count());
+        $this->assertSame(VerificacionFisica::ESTADO_APROBADA, $verificacion->fresh()->estado_aprobacion);
+        $this->assertSame(VerificacionFisica::ESTADO_PENDIENTE, VerificacionFisica::latest('id_verificacion')->first()->estado_aprobacion);
     }
 
     public function test_el_qr_devuelve_custodio_ambiente_y_si_es_mio(): void
@@ -376,25 +485,31 @@ class AprobacionesTest extends TestCase
         $suyo = $this->activo(['codigo_activo' => 'TPM-OFF-1']);
         $ajeno = $this->activo([
             'codigo_activo' => 'TPM-OFF-2',
-            'id_ambiente'   => $this->otroAmbiente->id_ambiente,
-            'id_custodio'   => $this->rector->id_usuario,
+            'id_ambiente' => $this->otroAmbiente->id_ambiente,
+            'id_custodio' => $this->rector->id_usuario,
         ]);
 
         $response = $this->actingAs($verificador)
             ->postJson(route('sincronizacion.verificaciones'), [
                 'verificaciones' => [
                     [
-                        'id_local'            => 'v-1',
-                        'codigo_activo'       => $suyo->codigo_activo,
+                        'id_local' => 'v-1',
+                        'codigo_activo' => $suyo->codigo_activo,
                         'ambiente_escaneo_id' => $this->ambiente->id_ambiente,
-                        'fecha_verificacion'  => now()->toIso8601String(),
-                        'estado_fisico'       => 'B',
+                        'fecha_verificacion' => now()->toIso8601String(),
+                        'estado_fisico' => 'B',
                     ],
                     [
-                        'id_local'            => 'v-2',
-                        'codigo_activo'       => $ajeno->codigo_activo,
+                        'id_local' => 'v-2',
+                        'codigo_activo' => $ajeno->codigo_activo,
                         'ambiente_escaneo_id' => $this->otroAmbiente->id_ambiente,
-                        'fecha_verificacion'  => now()->toIso8601String(),
+                        'fecha_verificacion' => now()->toIso8601String(),
+                    ],
+                    [
+                        'id_local' => 'v-3',
+                        'codigo_activo' => $suyo->codigo_activo,
+                        'ambiente_escaneo_id' => $this->otroAmbiente->id_ambiente,
+                        'fecha_verificacion' => now()->toIso8601String(),
                     ],
                 ],
             ])
@@ -403,13 +518,131 @@ class AprobacionesTest extends TestCase
 
         // El ajeno no entra: el dispositivo solo debe borrar lo ya guardado.
         $this->assertSame(['v-1'], array_column($response->json('registradas'), 'id_local'));
-        $this->assertSame(['v-2'], array_column($response->json('rechazadas'), 'id_local'));
+        $this->assertSame(['v-2', 'v-3'], array_column($response->json('rechazadas'), 'id_local'));
 
-        $this->assertSame(1, \App\Models\VerificacionFisica::count());
+        $this->assertSame(1, VerificacionFisica::count());
 
-        $creada = \App\Models\VerificacionFisica::first();
+        $creada = VerificacionFisica::first();
         $this->assertTrue($creada->sincronizado_offline);
         $this->assertSame($verificador->id_usuario, $creada->id_verificador);
-        $this->assertSame(\App\Models\VerificacionFisica::ESTADO_PENDIENTE, $creada->estado_aprobacion);
+        $this->assertSame(VerificacionFisica::ESTADO_PENDIENTE, $creada->estado_aprobacion);
+    }
+
+    public function test_verificaciones_muestran_los_30_activos_del_ambiente_y_aislan_otro_ambiente(): void
+    {
+        $activos = collect();
+        for ($numero = 1; $numero <= 30; $numero++) {
+            $activos->push($this->activo([
+                'codigo_activo' => sprintf('TPM-LAB3-%02d', $numero),
+            ]));
+        }
+
+        VerificacionFisica::create([
+            'id_activo' => $activos->first()->id_activo,
+            'id_ambiente_escaneo' => $this->otroAmbiente->id_ambiente,
+            'id_verificador' => $this->admin->id_usuario,
+            'fecha_verificacion' => now(),
+            'es_correspondencia_correcta' => false,
+            'observaciones' => 'Historial de otro ambiente.',
+            'estado_aprobacion' => VerificacionFisica::ESTADO_PENDIENTE,
+        ]);
+
+        $activoDeOtroAmbiente = $this->activo([
+            'codigo_activo' => 'TPM-LAB2-01',
+            'id_ambiente' => $this->otroAmbiente->id_ambiente,
+            'id_custodio' => $this->rector->id_usuario,
+        ]);
+
+        $this->actingAs($this->admin)
+            ->postJson(route('verificaciones.guardarItem'), [
+                'activo_id' => $activoDeOtroAmbiente->id_activo,
+                'ambiente_escaneo_id' => $this->ambiente->id_ambiente,
+                'es_correspondencia' => false,
+            ])
+            ->assertOk()
+            ->assertJsonPath('verificacion.observaciones', 'Activo registrado en Laboratorio 2 y encontrado en Laboratorio 3.');
+
+        $response = $this->actingAs($this->admin)->get(route('verificaciones.index', [
+            'carrera_id' => $this->carrera->id_carrera,
+            'ambiente_id' => $this->ambiente->id_ambiente,
+        ]));
+
+        $response->assertOk()
+            ->assertSee('30 activo(s) en este ambiente')
+            ->assertSee('TPM-LAB3-01')
+            ->assertSee('TPM-LAB3-30')
+            ->assertDontSee('Historial de otro ambiente.')
+            ->assertDontSee('TPM-LAB2-01');
+    }
+
+    public function test_finalizar_exige_ubicacion_de_activos_faltantes_y_no_envia_correo(): void
+    {
+        $verificado = $this->activo(['codigo_activo' => 'TPM-LAB3-VERIFICADO']);
+        $faltante = $this->activo(['codigo_activo' => 'TPM-LAB3-FALTANTE']);
+        Mail::fake();
+
+        $this->actingAs($this->admin)
+            ->postJson(route('verificaciones.guardarItem'), [
+                'activo_id' => $verificado->id_activo,
+                'ambiente_escaneo_id' => $this->ambiente->id_ambiente,
+                'es_correspondencia' => true,
+            ])
+            ->assertOk();
+
+        $this->postJson(route('verificaciones.finalizar'), [
+            'ambiente_id' => $this->ambiente->id_ambiente,
+        ])
+            ->assertUnprocessable()
+            ->assertJsonPath('faltantes.0.id_activo', $faltante->id_activo)
+            ->assertJsonPath('faltantes.0.ambiente_esperado', 'Laboratorio 3');
+
+        $this->assertDatabaseMissing('verificaciones_fisicas', [
+            'id_activo' => $faltante->id_activo,
+            'id_ambiente_escaneo' => $this->ambiente->id_ambiente,
+        ]);
+
+        $this->postJson(route('verificaciones.finalizar'), [
+            'ambiente_id' => $this->ambiente->id_ambiente,
+            'faltantes' => [[
+                'id_activo' => $faltante->id_activo,
+                'ubicacion' => 'Almacén central',
+            ]],
+        ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('total_verificados', 1)
+            ->assertJsonPath('total_observados', 1);
+
+        $this->assertDatabaseHas('verificaciones_fisicas', [
+            'id_activo' => $faltante->id_activo,
+            'id_ambiente_escaneo' => $this->ambiente->id_ambiente,
+            'observaciones' => 'No localizado en el ambiente esperado (Laboratorio 3). Ubicación reportada: Almacén central',
+            'verificacion_finalizada' => true,
+        ]);
+        Mail::assertNothingOutgoing();
+    }
+
+    public function test_dashboard_muestra_datos_mensuales_reales_en_grafica_de_barras(): void
+    {
+        $this->travelTo(Carbon::parse('2026-03-15 12:00:00'));
+
+        $activoEneroUno = $this->activo(['codigo_activo' => 'TPM-ENE-01']);
+        $activoEneroDos = $this->activo(['codigo_activo' => 'TPM-ENE-02']);
+        $this->activo(['codigo_activo' => 'TPM-FEB-01']);
+
+        DB::table('activos_fijos')->where('id_activo', $activoEneroUno->id_activo)
+            ->update(['created_at' => '2026-01-05 10:00:00']);
+        DB::table('activos_fijos')->where('id_activo', $activoEneroDos->id_activo)
+            ->update(['created_at' => '2026-01-20 10:00:00']);
+
+        $mesConMasRegistros = Carbon::parse('2026-01-01')->translatedFormat('M Y');
+
+        $response = $this->actingAs($this->admin)->get(route('dashboard'));
+
+        $response->assertOk()
+            ->assertSee("Más registros: {$mesConMasRegistros} (2)")
+            ->assertSee("type: 'bar'", false)
+            ->assertViewHas('maxRegistrosMensual', 2)
+            ->assertViewHas('mesesConMasRegistros', [$mesConMasRegistros]);
     }
 }

@@ -157,12 +157,12 @@ class User extends Authenticatable
     // ============================================================
 
     /**
-     * Alcance total: administradora, inventariador y ayudante recorren
-     * todas las carreras y ambientes.
+     * Administradora, personal operativo y rector recorren todas las carreras
+     * y ambientes.
      */
     public function puedeVerTodo(): bool
     {
-        return $this->esAdmin() || $this->esOperativo();
+        return $this->esAdmin() || $this->esOperativo() || $this->esRector();
     }
 
     public function puedeVerTodasLasCarreras(): bool
@@ -194,15 +194,12 @@ class User extends Authenticatable
     }
 
     /**
-     * Registra verificaciones físicas y las deja en estado PENDIENTE.
-     * El flag `puede_verificar` deja que la administradora abra este
-     * permiso a un rol de lectura, pero nunca a otro administrador.
+     * La administradora puede verificar; los demás usuarios requieren
+     * autorización explícita concedida por ella.
      */
     public function puedeRegistrarVerificacion(): bool
     {
-        return $this->esAdmin()
-            || $this->esOperativo()
-            || (bool) $this->puede_verificar;
+        return $this->esAdmin() || (bool) $this->puede_verificar;
     }
 
     /**
@@ -222,7 +219,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Cierra una verificación de un ambiente y avisa a la administradora.
+     * Cierra una verificación de un ambiente para su aprobación.
      */
     public function puedeFinalizarVerificacion(): bool
     {
@@ -240,7 +237,7 @@ class User extends Authenticatable
      */
     public function puedeSolicitarBajaOTransferencia(): bool
     {
-        return $this->puedeRegistrarVerificacion();
+        return $this->esAdmin() || $this->esOperativo() || (bool) $this->puede_verificar;
     }
 
     public function puedeGestionarUsuarios(): bool
@@ -254,10 +251,11 @@ class User extends Authenticatable
 
     /**
      * Ambientes que el usuario puede ver.
-     * - administradora, inventariador y ayudante: todos;
+     * - administradora, inventariador, ayudante y rector: todos;
      * - jefe de carrera: los ambientes de su carrera;
      * - docente custodio: los ambientes donde custodia, completos;
-     * - rector y demás: los ambientes donde tiene activos propios.
+     * - rector: todos los ambientes;
+     * - demás usuarios: los ambientes donde custodian activos o ítems.
      */
     public function ambientesVisibles()
     {
@@ -364,28 +362,13 @@ class User extends Authenticatable
      */
     public function scopeActivos($query)
     {
-        if ($this->esAdmin() || $this->esOperativo()) {
+        if ($this->puedeVerTodo()) {
             return $query;
         }
 
         $idsAmbientes = $this->idsAmbientesVisibles();
 
-        return $query->where(function ($q) use ($idsAmbientes) {
-            $q->where('id_custodio', $this->id_usuario);
-
-            if ($this->id_carrera) {
-                $q->orWhereIn('id_item', function ($sub) {
-                    $sub->select('id_item')
-                        ->from('item_usuario')
-                        ->where('id_usuario', $this->id_usuario)
-                        ->whereNull('fecha_fin');
-                });
-            }
-
-            if (! empty($idsAmbientes)) {
-                $q->orWhereIn('id_ambiente', $idsAmbientes);
-            }
-        });
+        return $query->whereIn('activos_fijos.id_ambiente', $idsAmbientes ?? []);
     }
 
     // ============================================================

@@ -9,7 +9,8 @@
         <h2 style="font-size:20px;font-weight:800;color:#0f172a;margin-bottom:6px;">Registrar Nueva Transferencia</h2>
         <p style="font-size:13px;color:#64748b;margin-bottom:20px;">Selecciona el activo, el ambiente de destino y el nuevo custodio responsable.</p>
 
-        <form id="formTransferencia" method="POST" action="{{ route('actas.transferencia.store') }}" enctype="multipart/form-data">
+        <form id="formTransferencia" method="POST" action="{{ route('actas.transferencia.store') }}" enctype="multipart/form-data"
+              data-custodios-url="{{ route('actas.transferencia.custodios', ['idAmbiente' => '__ID_AMBIENTE__']) }}">
             @csrf
 
             <div style="display:flex;flex-direction:column;gap:16px;">
@@ -109,6 +110,7 @@
                     <select name="id_ambiente_destino" id="select-ambiente-transferencia" size="4"
                             style="width:100%;padding:8px;border-radius:0 0 8px 8px;border:1px solid #cbd5e1;border-top:none;font-size:13px;background:white;box-sizing:border-box;"
                             onchange="cargarCustodiosPorAmbiente(this.value)">
+                        <option value="" disabled {{ old('id_ambiente_destino', $idAmbientePreselected ?? '') ? '' : 'selected' }}>— Selecciona un ambiente destino —</option>
                         @foreach($ambientesDisponibles ?? [] as $amb)
                             @php
                                 $textoAmbiente = strtolower(($amb->codigo ?? '') . ' ' . $amb->nombre . ' ' . ($amb->carrera?->nombre ?? ''));
@@ -137,13 +139,13 @@
                         <option value="">— Categoría del ambiente destino (automática) —</option>
                         @foreach($categoriasDisponibles ?? [] as $cat)
                             @php
-                                $textoCategoria = strtolower(($cat->codigo ?? '') . ' ' . $cat->nombre . ' ' . ($cat->ambiente?->nombre ?? ''));
+                                $textoCategoria = strtolower($cat->id_categoria . ' ' . $cat->nombre . ' ' . ($cat->ambiente?->nombre ?? ''));
                             @endphp
                             <option value="{{ $cat->id_categoria }}" {{ old('id_categoria', $idCategoriaPreselected ?? '') == $cat->id_categoria ? 'selected' : '' }}
                                     data-busqueda="{{ $textoCategoria }}"
                                     data-ambiente-id="{{ $cat->ambiente?->id_ambiente ?? '' }}"
                                     style="padding: 6px; border-bottom: 1px solid #f1f5f9; {{ old('id_ambiente_destino', $idAmbientePreselected ?? '') != ($cat->ambiente?->id_ambiente ?? '') && $idAmbientePreselected ? 'display:none;' : '' }}">
-                                [{{ $cat->codigo ?? 'S/C' }}] {{ $cat->nombre }} <span style="color:#64748b;font-size:11px;">(Ambiente: {{ $cat->ambiente?->nombre ?? '—' }})</span>
+                                ID {{ $cat->id_categoria }} - {{ $cat->nombre }} <span style="color:#64748b;font-size:11px;">(Ambiente: {{ $cat->ambiente?->nombre ?? '—' }})</span>
                             </option>
                         @endforeach
                     </select>
@@ -163,6 +165,7 @@
                     </div>
                     <select name="id_custodio" id="select-custodio-transferencia" size="4"
                             style="width:100%;padding:8px;border-radius:0 0 8px 8px;border:1px solid #cbd5e1;border-top:none;font-size:13px;background:white;box-sizing:border-box;">
+                        <option value="" disabled {{ old('id_custodio') ? '' : 'selected' }}>— Selecciona un custodio —</option>
                         @foreach($usuarios ?? [] as $u)
                             @php
                                 $itemActivo = $u->items->first();
@@ -185,7 +188,7 @@
                 {{-- ========================================== --}}
                 <div>
                     <label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:#334155;">Fecha de Transferencia *</label>
-                    <input type="date" name="fecha_transferencia" id="inputFecha" required value="{{ old('fecha_transferencia', date('Y-m-d')) }}"
+                    <input type="date" name="fecha_transferencia" id="inputFecha" required max="{{ now()->toDateString() }}" value="{{ old('fecha_transferencia', now()->toDateString()) }}"
                            style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1;font-size:13px;background:white;">
                     <div id="errorFecha" style="display:none;color:#dc2626;font-size:11px;font-weight:700;margin-top:4px;">⚠️ La fecha es obligatoria y no puede ser futura.</div>
                 </div>
@@ -214,7 +217,7 @@
 
             <div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #e2e8f0;padding-top:16px;margin-top:20px;">
                 <a href="{{ route('actas.transferencia.index') }}" style="background:#e2e8f0;color:#475569;border:none;padding:10px 18px;border-radius:8px;font-weight:700;text-decoration:none;font-size:13px;display:inline-flex;align-items:center;">Cancelar</a>
-                <button type="button" id="btnRegistrar" onclick="validarTransferencia()" style="background:#ea580c;color:white;border:none;padding:10px 18px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;">Registrar Transferencia</button>
+                <button type="submit" id="btnRegistrar" style="background:#ea580c;color:white;border:none;padding:10px 18px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;">Registrar Transferencia</button>
             </div>
         </form>
     </div>
@@ -224,6 +227,7 @@
     let datosActivos = [];
     let datosAmbientes = [];
     let datosCustodios = [];
+    let solicitudCustodios = 0;
 
     document.addEventListener('DOMContentLoaded', function () {
         const selActivo = document.getElementById('select-activo-transferencia');
@@ -241,7 +245,7 @@
         }
 
         actualizarResumen();
-        validarCampos();
+        actualizarContadorActivos();
     });
 
     function filtrarActivosTransferencia(texto) {
@@ -263,7 +267,13 @@
     }
 
     function filtrarActivosPorCarrera(idCarrera) {
-        const ambienteFiltro = document.getElementById('select-ambiente-activo-filtro')?.value;
+        const selectAmbiente = document.getElementById('select-ambiente-activo-filtro');
+        const ambienteSeleccionado = selectAmbiente.selectedOptions[0];
+        if (ambienteSeleccionado && idCarrera && ambienteSeleccionado.getAttribute('data-carrera-id') !== idCarrera) {
+            selectAmbiente.value = '';
+        }
+
+        const ambienteFiltro = selectAmbiente.value;
         const input = document.getElementById('buscador-activo-transferencia');
         const texto = input.value.toLowerCase().trim();
         const tokens = texto.split(/\s+/).filter(t => t.length > 0);
@@ -275,11 +285,6 @@
             const coincideCarrera = !idCarrera || opt.getAttribute('data-carrera-id') === idCarrera;
             const coincideAmbiente = !ambienteFiltro || opt.getAttribute('data-ambiente-id') === ambienteFiltro;
             opt.style.display = (coincideTexto && coincideCarrera && coincideAmbiente) ? "" : "none";
-        }
-        // Resetear filtro de ambiente si ya no aplica
-        if (ambienteFiltro) {
-            const ambienteOpt = Array.from(select.options).find(o => o.value === ambienteFiltro);
-            // El filtro de ambiente se aplica independientemente
         }
         actualizarContadorActivos();
         actualizarResumen();
@@ -404,6 +409,7 @@
             }
             document.getElementById('contadorActivos').textContent = '0 activos seleccionados';
         } else if (tipo === 'ambiente') {
+            solicitudCustodios++;
             select.value = '';
             document.getElementById('select-custodio-transferencia').innerHTML = '<option value="">Selecciona un ambiente primero</option>';
             document.getElementById('infoCustodioVacio').style.display = 'none';
@@ -420,6 +426,7 @@
     }
 
     async function cargarCustodiosPorAmbiente(idAmbiente) {
+        const solicitudActual = ++solicitudCustodios;
         const selectCustodio = document.getElementById('select-custodio-transferencia');
         const infoVacio = document.getElementById('infoCustodioVacio');
         selectCustodio.innerHTML = '<option value="">Cargando custodios...</option>';
@@ -434,28 +441,43 @@
         }
 
         try {
-            const resp = await fetch("{{ route('actas.transferencia.custodios', 0) }}".replace('/0', '/' + idAmbiente), {
+            const form = document.getElementById('formTransferencia');
+            const url = form.dataset.custodiosUrl.replace('__ID_AMBIENTE__', encodeURIComponent(idAmbiente));
+            const resp = await fetch(url, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                 credentials: 'same-origin',
             });
             if (!resp.ok) throw new Error('Error cargando custodios');
             const data = await resp.json();
+            if (solicitudActual !== solicitudCustodios) {
+                return;
+            }
 
             selectCustodio.innerHTML = '<option value="">— Selecciona un custodio —</option>';
-            if (data.length === 0) {
+            if (data.custodios.length === 0) {
                 selectCustodio.innerHTML = '<option value="">No hay custodios asignados a este ambiente</option>';
+                infoVacio.textContent = 'No hay custodios asignados ni usuarios activos disponibles.';
                 infoVacio.style.display = 'block';
             } else {
-                data.forEach(c => {
+                data.custodios.forEach(c => {
                     const opt = document.createElement('option');
                     opt.value = c.id;
                     opt.textContent = c.texto;
                     opt.setAttribute('data-busqueda', c.busqueda);
                     selectCustodio.appendChild(opt);
                 });
+                if (data.fallback) {
+                    infoVacio.textContent = 'No hay custodios asignados a este ambiente. Se muestran todos los usuarios activos.';
+                    infoVacio.style.display = 'block';
+                }
             }
         } catch (e) {
+            if (solicitudActual !== solicitudCustodios) {
+                return;
+            }
             selectCustodio.innerHTML = '<option value="">Error al cargar custodios</option>';
+            infoVacio.textContent = 'No se pudieron cargar los custodios. Intenta seleccionar el ambiente de nuevo.';
+            infoVacio.style.display = 'block';
             console.error(e);
         }
         selectCustodio.disabled = false;
@@ -472,18 +494,20 @@
         const fecha = document.getElementById('inputFecha');
 
         const resumen = document.getElementById('resumenTransferencia');
-        const activoOpt = selActivo.options[selActivo.selectedIndex];
-        const ambOpt = selAmbiente.options[selAmbiente.selectedIndex];
-        const custOpt = selCustodio.options[selCustodio.selectedIndex];
-        const catOpt = selCategoria.options[selCategoria.selectedIndex];
+        const ambOpt = selAmbiente.selectedOptions[0] || null;
+        const custOpt = selCustodio.selectedOptions[0] || null;
+        const catOpt = selCategoria.selectedOptions[0] || null;
 
         // Contar activos seleccionados (multiple)
         const activosSeleccionados = Array.from(selActivo.selectedOptions).map(o => o.value);
 
         const activoTexto = activosSeleccionados.length > 0 ? activosSeleccionados.length + ' activo(s) seleccionado(s)' : '—';
-        const origenTexto = 'Varios orígenes';
-        const destinoTexto = ambOpt && ambOpt.value ? ambOpt.textContent : '—';
-        const carreraTexto = ambOpt && ambOpt.value ? (ambOpt.getAttribute('data-carrera') || '—') : '—';
+        const origenes = Array.from(selActivo.selectedOptions)
+            .map(option => option.getAttribute('data-origen'))
+            .filter((origen, index, lista) => origen && lista.indexOf(origen) === index);
+        const origenTexto = origenes.length > 0 ? origenes.join(', ') : '—';
+        const destinoTexto = ambOpt?.value ? ambOpt.textContent : '—';
+        const carreraTexto = ambOpt?.value ? (ambOpt.getAttribute('data-carrera') || '—') : '—';
         const categoriaTexto = catOpt && catOpt.value ? catOpt.textContent : '—';
         const custodioTexto = custOpt && custOpt.value ? custOpt.textContent : '—';
         const fechaTexto = fecha.value ? fecha.value : '—';
@@ -496,7 +520,7 @@
         document.getElementById('resumenCustodio').textContent = custodioTexto;
         document.getElementById('resumenFecha').textContent = fechaTexto;
 
-        resumen.style.display = (activosSeleccionados.length > 0 && ambOpt.value && custOpt.value && fecha.value) ? 'block' : 'none';
+        resumen.style.display = (activosSeleccionados.length > 0 && ambOpt?.value && custOpt?.value && fecha.value) ? 'block' : 'none';
     }
 
     function actualizarContadorActivos() {
@@ -507,7 +531,6 @@
 
     function validarTransferencia() {
         let isValid = true;
-        const hoy = new Date().toISOString().split('T')[0];
 
         const activo = document.getElementById('select-activo-transferencia');
         const errActivo = document.getElementById('errorActivo');
@@ -530,49 +553,31 @@
         const fecha = document.getElementById('inputFecha');
         const errFecha = document.getElementById('errorFecha');
         if (!fecha.value) {
+            errFecha.textContent = '⚠️ La fecha es obligatoria.';
             errFecha.style.display = 'block'; fecha.style.borderColor = '#dc2626'; isValid = false;
-        } else if (fecha.value > hoy) {
+        } else if (fecha.value > fecha.max) {
             errFecha.textContent = '⚠️ La fecha no puede ser futura.';
             errFecha.style.display = 'block'; fecha.style.borderColor = '#dc2626'; isValid = false;
         } else {
             errFecha.style.display = 'none'; fecha.style.borderColor = '#cbd5e1';
         }
 
-        const btn = document.getElementById('btnRegistrar');
-        btn.disabled = !isValid;
+        return isValid;
+    }
 
-        if (isValid) {
-            document.getElementById('formTransferencia').submit();
+    document.getElementById('formTransferencia')?.addEventListener('submit', function (event) {
+        if (!validarTransferencia()) {
+            event.preventDefault();
+            return;
         }
-    }
 
-    function validarCampos() {
-        let isValid = true;
-        const hoy = new Date().toISOString().split('T')[0];
+        const boton = document.getElementById('btnRegistrar');
+        boton.disabled = true;
+        boton.textContent = 'Registrando...';
+    });
 
-        const activo = document.getElementById('select-activo-transferencia');
-        if (!activo.value) isValid = false;
-
-        const ambiente = document.getElementById('select-ambiente-transferencia');
-        if (!ambiente.value) isValid = false;
-
-        const custodio = document.getElementById('select-custodio-transferencia');
-        if (!custodio.value) isValid = false;
-
-        const fecha = document.getElementById('inputFecha');
-        if (!fecha.value || fecha.value > hoy) isValid = false;
-
-        const btn = document.getElementById('btnRegistrar');
-        btn.disabled = !isValid;
-    }
-
-    document.getElementById('select-activo-transferencia')?.addEventListener('change', function() { actualizarResumen(); actualizarContadorActivos(); validarCampos(); });
-    document.getElementById('select-ambiente-transferencia')?.addEventListener('change', function() { actualizarResumen(); validarCampos(); });
-    document.getElementById('select-custodio-transferencia')?.addEventListener('change', function() { actualizarResumen(); validarCampos(); });
-    document.getElementById('select-categoria-transferencia')?.addEventListener('change', function() { actualizarResumen(); validarCampos(); });
-    document.getElementById('inputFecha')?.addEventListener('change', function() { actualizarResumen(); validarCampos(); });
-    document.getElementById('buscador-activo-transferencia')?.addEventListener('input', validarCampos);
-    document.getElementById('buscador-ambiente-transferencia')?.addEventListener('input', validarCampos);
-    document.getElementById('buscador-custodio-transferencia')?.addEventListener('input', validarCampos);
+    document.getElementById('select-activo-transferencia')?.addEventListener('change', actualizarContadorActivos);
+    document.getElementById('select-custodio-transferencia')?.addEventListener('change', actualizarResumen);
+    document.getElementById('inputFecha')?.addEventListener('input', actualizarResumen);
 </script>
 @endsection

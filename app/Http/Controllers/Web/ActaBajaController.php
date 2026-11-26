@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\ActaBaja;
 use App\Models\ActivoFijo;
-use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,8 +22,8 @@ class ActaBajaController extends Controller
 
         $query = ActaBaja::with(['activo', 'usuario', 'aprobador'])->latest();
 
-        if (! $user->esAdmin()) {
-            $query->where('id_usuario', $user->id_usuario);
+        if (! $user->puedeVerTodo()) {
+            $query->whereHas('activo', fn ($activoQuery) => $activoQuery->paraUsuario($user));
         }
 
         if ($request->filled('estado') && in_array($request->estado, [
@@ -36,7 +35,11 @@ class ActaBajaController extends Controller
         }
 
         $actas = $query->paginate(15)->appends($request->query());
-        $pendientes = ActaBaja::where('estado', ActaBaja::ESTADO_PENDIENTE)->count();
+        $pendientesQuery = ActaBaja::where('estado', ActaBaja::ESTADO_PENDIENTE);
+        if (! $user->puedeVerTodo()) {
+            $pendientesQuery->whereHas('activo', fn ($activoQuery) => $activoQuery->paraUsuario($user));
+        }
+        $pendientes = $pendientesQuery->count();
 
         return view('actas.baja.index', compact('actas', 'pendientes'));
     }
@@ -57,7 +60,7 @@ class ActaBajaController extends Controller
             $bus = $request->q;
             $query->where(function ($s) use ($bus) {
                 $s->where('codigo_activo', 'like', "%{$bus}%")
-                  ->orWhere('nombre', 'like', "%{$bus}%");
+                    ->orWhere('nombre', 'like', "%{$bus}%");
             });
         }
 
@@ -96,7 +99,7 @@ class ActaBajaController extends Controller
             return back()->withInput()->withErrors(['id_activo' => 'Debe seleccionar un activo para dar de baja.']);
         }
 
-        $activo = ActivoFijo::findOrFail($idActivoSeleccionado);
+        $activo = ActivoFijo::paraUsuario($user)->findOrFail($idActivoSeleccionado);
 
         // Manejar subida de hasta 3 fotos de evidencia
         $fotos = [];
@@ -107,7 +110,7 @@ class ActaBajaController extends Controller
             }
         }
 
-        $numero = 'BAJA-' . now()->format('Y') . '-' . str_pad(
+        $numero = 'BAJA-'.now()->format('Y').'-'.str_pad(
             (string) ((ActaBaja::max('id_acta_baja') ?? 0) + 1),
             4, '0', STR_PAD_LEFT
         );
@@ -116,20 +119,20 @@ class ActaBajaController extends Controller
 
         $acta = DB::transaction(function () use ($request, $activo, $user, $numero, $esAdmin, $idActivoSeleccionado, $textoMotivo, $causalBaja, $responsableNombre, $responsableCi, $fotos) {
             $acta = ActaBaja::create([
-                'numero_acta'      => $numero,
-                'id_activo'        => $idActivoSeleccionado,
-                'id_usuario'       => $user->id_usuario,
-                'motivo'           => $textoMotivo,
-                'causal_baja'      => $causalBaja,
+                'numero_acta' => $numero,
+                'id_activo' => $idActivoSeleccionado,
+                'id_usuario' => $user->id_usuario,
+                'motivo' => $textoMotivo,
+                'causal_baja' => $causalBaja,
                 'foto_evidencia_1' => $fotos[1] ?? null,
                 'foto_evidencia_2' => $fotos[2] ?? null,
                 'foto_evidencia_3' => $fotos[3] ?? null,
                 'responsable_nombre' => $responsableNombre,
-                'responsable_ci'   => $responsableCi,
-                'fecha_baja'       => now(),
-                'observaciones'    => $request->input('observaciones') ?? null,
-                'estado'           => $esAdmin ? ActaBaja::ESTADO_APROBADA : ActaBaja::ESTADO_PENDIENTE,
-                'id_aprobador'     => $esAdmin ? $user->id_usuario : null,
+                'responsable_ci' => $responsableCi,
+                'fecha_baja' => now(),
+                'observaciones' => $request->input('observaciones') ?? null,
+                'estado' => $esAdmin ? ActaBaja::ESTADO_APROBADA : ActaBaja::ESTADO_PENDIENTE,
+                'id_aprobador' => $esAdmin ? $user->id_usuario : null,
                 'fecha_aprobacion' => $esAdmin ? now() : null,
             ]);
 
@@ -164,8 +167,8 @@ class ActaBajaController extends Controller
 
         DB::transaction(function () use ($acta, $request) {
             $acta->update([
-                'estado'           => ActaBaja::ESTADO_APROBADA,
-                'id_aprobador'     => $request->user()->id_usuario,
+                'estado' => ActaBaja::ESTADO_APROBADA,
+                'id_aprobador' => $request->user()->id_usuario,
                 'fecha_aprobacion' => now(),
             ]);
 
@@ -186,8 +189,8 @@ class ActaBajaController extends Controller
 
         DB::transaction(function () use ($acta, $request) {
             $acta->update([
-                'estado'           => ActaBaja::ESTADO_RECHAZADA,
-                'id_aprobador'     => $request->user()->id_usuario,
+                'estado' => ActaBaja::ESTADO_RECHAZADA,
+                'id_aprobador' => $request->user()->id_usuario,
                 'fecha_aprobacion' => now(),
             ]);
 
@@ -210,7 +213,9 @@ class ActaBajaController extends Controller
     // ============================================================
     public function show(ActaBaja $acta)
     {
+        $this->autorizarConsulta($acta);
         $acta->load(['activo.categoria', 'activo.ambiente.carrera', 'usuario', 'aprobador']);
+
         return view('actas.baja.show', compact('acta'));
     }
 
@@ -219,24 +224,25 @@ class ActaBajaController extends Controller
     // ============================================================
     public function pdf(ActaBaja $acta)
     {
+        $this->autorizarConsulta($acta);
         $acta->load(['activo.categoria', 'activo.ambiente.carrera', 'usuario', 'aprobador']);
 
         // Preparar logo como data URI para que se vea en el PDF
         $logoDataUri = '';
         $logoPath = public_path('images/logo.png');
         if (file_exists($logoPath)) {
-            $logoDataUri = 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath));
+            $logoDataUri = 'data:image/png;base64,'.base64_encode(file_get_contents($logoPath));
         }
 
         // Preparar las 3 fotos de evidencia como data URIs para que se vean en el PDF
         $fotosEvidenciaDataUri = [];
         foreach ([1, 2, 3] as $i) {
-            $campo = 'foto_evidencia_' . $i;
+            $campo = 'foto_evidencia_'.$i;
             $ruta = $acta->{$campo} ?? null;
             if ($ruta && Storage::disk('public')->exists($ruta)) {
                 $contenido = Storage::disk('public')->get($ruta);
                 $mime = Storage::disk('public')->mimeType($ruta);
-                $fotosEvidenciaDataUri[$i] = 'data:' . $mime . ';base64,' . base64_encode($contenido);
+                $fotosEvidenciaDataUri[$i] = 'data:'.$mime.';base64,'.base64_encode($contenido);
             } else {
                 $fotosEvidenciaDataUri[$i] = null;
             }
@@ -251,14 +257,29 @@ class ActaBajaController extends Controller
                 'isFontSubsettingEnabled' => true,
             ]);
 
-        return $pdf->stream('Acta_Baja_' . $acta->numero_acta . '.pdf');
+        return $pdf->stream('Acta_Baja_'.$acta->numero_acta.'.pdf');
     }
+
     public function excel(ActaBaja $acta)
     {
+        $this->autorizarConsulta($acta);
         $acta->load(['activo.categoria', 'activo.ambiente.carrera', 'usuario', 'aprobador']);
 
         return response()->view('actas.baja.excel', compact('acta'));
     }
+
+    private function autorizarConsulta(ActaBaja $acta): void
+    {
+        $user = Auth::user();
+
+        abort_if(
+            ! $user->esAdmin()
+                && ! $user->esRector()
+                && ! ActivoFijo::paraUsuario($user)->whereKey($acta->id_activo)->exists(),
+            404
+        );
+    }
+
     // ============================================================
     // DAR DE ALTA — Reactivar un activo dado de baja
     // ============================================================
@@ -267,25 +288,25 @@ class ActaBajaController extends Controller
         abort_unless(Auth::user()?->esAdmin(), 403, 'Solo la administración puede dar de alta activos.');
 
         $data = $request->validate([
-            'id_ambiente'  => 'required|exists:ambientes,id_ambiente',
+            'id_ambiente' => 'required|exists:ambientes,id_ambiente',
             'id_categoria' => 'required|exists:categorias,id_categoria',
-            'id_custodio'  => 'nullable|exists:usuarios,id_usuario',
+            'id_custodio' => 'nullable|exists:usuarios,id_usuario',
         ]);
 
         DB::transaction(function () use ($acta, $data) {
             // Actualizar el estado y ubicación del activo relacionado
             if ($acta->activo) {
                 $acta->activo->update([
-                    'id_ambiente'     => $data['id_ambiente'],
-                    'id_categoria'    => $data['id_categoria'],
-                    'id_custodio'     => $data['id_custodio'] ?? $acta->activo->id_custodio,
+                    'id_ambiente' => $data['id_ambiente'],
+                    'id_categoria' => $data['id_categoria'],
+                    'id_custodio' => $data['id_custodio'] ?? $acta->activo->id_custodio,
                     'estado_registro' => 'ASIGNADO',
                 ]);
             }
 
             // Opcional: Marcar el acta como cerrada/anulada o eliminarla lógicamente
             $acta->update([
-                'comentario_aprobacion' => ($acta->comentario_aprobacion ? $acta->comentario_aprobacion . ' | ' : '') . 'Activo dado de alta y reasignado.',
+                'comentario_aprobacion' => ($acta->comentario_aprobacion ? $acta->comentario_aprobacion.' | ' : '').'Activo dado de alta y reasignado.',
             ]);
         });
 

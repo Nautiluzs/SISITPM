@@ -40,10 +40,10 @@ class VerificacionSolicitudBajaTest extends TestCase
         $carrera = Carrera::create(['codigo' => 'SIF', 'nombre' => 'Sistemas Informáticos']);
 
         $this->ambiente = Ambiente::create([
-            'codigo'     => 'LAB-01',
-            'nombre'     => 'Laboratorio 1',
-            'bloque'     => 'A',
-            'piso'       => 1,
+            'codigo' => 'LAB-01',
+            'nombre' => 'Laboratorio 1',
+            'bloque' => 'A',
+            'piso' => 1,
             'id_carrera' => $carrera->id_carrera,
         ]);
     }
@@ -51,9 +51,7 @@ class VerificacionSolicitudBajaTest extends TestCase
     protected function activo(): ActivoFijo
     {
         $categoria = Categoria::create([
-            'codigo'      => 'EQ-COMP',
-            'nombre'      => 'Equipo de cómputo',
-            'descripcion' => 'Dispositivos tecnológicos',
+            'nombre' => 'Equipo de cómputo',
         ]);
 
         $fuente = FuenteFinanciamiento::create([
@@ -62,19 +60,19 @@ class VerificacionSolicitudBajaTest extends TestCase
         ]);
 
         return ActivoFijo::create([
-            'codigo_activo'   => 'ACT-1001',
-            'nombre'          => 'Laptop de pruebas',
-            'descripcion'     => 'Equipo de laboratorio',
-            'tipo_bien'       => 'ACTIVO_FIJO',
-            'marca'           => 'Dell',
-            'modelo'          => 'Latitude',
-            'numero_serie'    => 'SN-ACT-1001',
-            'estado_fisico'   => 'B',
+            'codigo_activo' => 'ACT-1001',
+            'nombre' => 'Laptop de pruebas',
+            'descripcion' => 'Equipo de laboratorio',
+            'tipo_bien' => 'ACTIVO_FIJO',
+            'marca' => 'Dell',
+            'modelo' => 'Latitude',
+            'numero_serie' => 'SN-ACT-1001',
+            'estado_fisico' => 'B',
             'estado_registro' => 'ASIGNADO',
-            'id_categoria'    => $categoria->id_categoria,
-            'id_ambiente'     => $this->ambiente->id_ambiente,
-            'id_fuente'       => $fuente->id_fuente,
-            'id_custodio'     => $this->verificador->id_usuario,
+            'id_categoria' => $categoria->id_categoria,
+            'id_ambiente' => $this->ambiente->id_ambiente,
+            'id_fuente' => $fuente->id_fuente,
+            'id_custodio' => $this->verificador->id_usuario,
         ]);
     }
 
@@ -84,12 +82,12 @@ class VerificacionSolicitudBajaTest extends TestCase
 
         $this->actingAs($this->verificador)
             ->postJson(route('verificaciones.guardarItem'), [
-                'activo_id'           => $activo->id_activo,
+                'activo_id' => $activo->id_activo,
                 'ambiente_escaneo_id' => $this->ambiente->id_ambiente,
-                'es_correspondencia'  => false,
-                'observaciones'       => 'Pantalla rota y sin cargador',
-                'estado_fisico'       => 'FF',
-                'solicitar_baja'      => true,
+                'es_correspondencia' => false,
+                'observaciones' => 'Pantalla rota y sin cargador',
+                'estado_fisico' => 'FF',
+                'solicitar_baja' => true,
             ])
             ->assertOk()
             ->assertJsonPath('success', true);

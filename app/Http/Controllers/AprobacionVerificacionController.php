@@ -3,13 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActaBaja;
+use App\Models\Carrera;
 use App\Models\VerificacionFisica;
-use App\Models\User;
-use App\Models\Ambiente;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class AprobacionVerificacionController extends Controller
 {
@@ -18,13 +17,13 @@ class AprobacionVerificacionController extends Controller
     // ============================================================
     public function index(Request $request)
     {
-        $carreras = \App\Models\Carrera::orderBy('nombre', 'asc')->get();
+        $carreras = Carrera::orderBy('nombre', 'asc')->get();
 
         $query = VerificacionFisica::with([
             'activo.ambiente.carrera',
             'verificador',
             'ambienteEscaneo.carrera',
-            'aprobador'
+            'aprobador',
         ])->pendientesAprobacion()->latest('fecha_verificacion');
 
         if ($request->filled('carrera_id') && $request->carrera_id !== 'todas') {
@@ -104,8 +103,9 @@ class AprobacionVerificacionController extends Controller
                     : 'Verificación aprobada exitosamente.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Error al aprobar verificación: ' . $e->getMessage());
-            return back()->with('error', 'Error al aprobar: ' . $e->getMessage());
+            Log::error('Error al aprobar verificación: '.$e->getMessage());
+
+            return back()->with('error', 'Error al aprobar: '.$e->getMessage());
         }
     }
 
@@ -131,16 +131,16 @@ class AprobacionVerificacionController extends Controller
         $siguiente = (ActaBaja::max('id_acta_baja') ?? 0) + 1;
 
         return ActaBaja::create([
-            'numero_acta'        => 'BAJA-' . now()->format('Y') . '-' . str_pad((string) $siguiente, 4, '0', STR_PAD_LEFT),
-            'id_activo'          => $verificacion->id_activo,
-            'id_usuario'         => $verificacion->id_verificador,
-            'motivo'             => $verificacion->observaciones
-                ? \Illuminate\Support\Str::limit($verificacion->observaciones, 250, '…')
+            'numero_acta' => 'BAJA-'.now()->format('Y').'-'.str_pad((string) $siguiente, 4, '0', STR_PAD_LEFT),
+            'id_activo' => $verificacion->id_activo,
+            'id_usuario' => $verificacion->id_verificador,
+            'motivo' => $verificacion->observaciones
+                ? Str::limit($verificacion->observaciones, 250, '…')
                 : 'Baja solicitada durante la verificación física.',
-            'fecha_baja'         => now()->toDateString(),
-            'estado'             => ActaBaja::ESTADO_PENDIENTE,
-            'es_sustitucion'     => $sustitucion,
-            'datos_sustituto'    => $sustitucion ? $datos : null,
+            'fecha_baja' => now()->toDateString(),
+            'estado' => ActaBaja::ESTADO_PENDIENTE,
+            'es_sustitucion' => $sustitucion,
+            'datos_sustituto' => $sustitucion ? $datos : null,
         ]);
     }
 
@@ -174,8 +174,9 @@ class AprobacionVerificacionController extends Controller
                 ->with('status', 'Verificación rechazada.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Error al rechazar verificación: ' . $e->getMessage());
-            return back()->with('error', 'Error al rechazar: ' . $e->getMessage());
+            Log::error('Error al rechazar verificación: '.$e->getMessage());
+
+            return back()->with('error', 'Error al rechazar: '.$e->getMessage());
         }
     }
 
@@ -207,8 +208,9 @@ class AprobacionVerificacionController extends Controller
                 ->with('status', 'Verificación marcada como corregida.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Error al corregir verificación: ' . $e->getMessage());
-            return back()->with('error', 'Error al corregir: ' . $e->getMessage());
+            Log::error('Error al corregir verificación: '.$e->getMessage());
+
+            return back()->with('error', 'Error al corregir: '.$e->getMessage());
         }
     }
 
@@ -248,66 +250,12 @@ class AprobacionVerificacionController extends Controller
             DB::commit();
 
             return redirect()->route('verificaciones-aprobacion.index')
-                ->with('status', 'Se aprobaron ' . $verificaciones->count() . ' verificación(es) correctas del ambiente.');
+                ->with('status', 'Se aprobaron '.$verificaciones->count().' verificación(es) correctas del ambiente.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Error al aprobar verificaciones masivas: ' . $e->getMessage());
-            return back()->with('error', 'Error en la aprobación masiva: ' . $e->getMessage());
-        }
-    }
+            Log::error('Error al aprobar verificaciones masivas: '.$e->getMessage());
 
-    // ============================================================
-    // NOTIFICAR FINALIZACIÓN A LA ADMINISTRADORA
-    // ============================================================
-    public function notificarFinalizacion(Request $request)
-    {
-        $request->validate([
-            'ambiente_id' => 'required|exists:ambientes,id_ambiente',
-            'verificador_id' => 'required|exists:usuarios,id_usuario',
-            'total_verificados' => 'required|integer|min:0',
-            'total_observados' => 'required|integer|min:0',
-            'tiempo_transcurrido' => 'nullable|string',
-        ]);
-
-        $ambiente = Ambiente::with('carrera')->findOrFail($request->ambiente_id);
-        $verificador = User::findOrFail($request->verificador_id);
-
-        $administradoras = User::where('rol', 'ADMINISTRADOR')
-            ->where('estado', 'ACTIVO')
-            ->get();
-
-        $asunto = "🔔 Verificación Finalizada — {$ambiente->nombre}";
-        $contenido = "
-            <h2>Verificación Finalizada</h2>
-            <p><strong>Ambiente:</strong> {$ambiente->nombre}</p>
-            <p><strong>Carrera:</strong> " . ($ambiente->carrera->nombre ?? 'Sin carrera') . "</p>
-            <p><strong>Verificador:</strong> {$verificador->nombre_completo}</p>
-            <p><strong>Total verificados:</strong> {$request->total_verificados}</p>
-            <p><strong>Total observados:</strong> {$request->total_observados}</p>
-            <p><strong>Tiempo transcurrido:</strong> " . ($request->tiempo_transcurrido ?? 'No registrado') . "</p>
-            <hr>
-            <p>Ingrese al sistema para <strong>aprobar o rechazar</strong> las verificaciones.</p>
-        ";
-
-        try {
-            foreach ($administradoras as $admin) {
-                if (! empty($admin->email)) {
-                    Mail::html($contenido, function ($message) use ($admin, $asunto) {
-                        $message->to($admin->email)->subject($asunto);
-                    });
-                }
-            }
-
-            return response()->json([
-                'success' => true,
-                'mensaje' => 'Notificación enviada a ' . $administradoras->count() . ' administrador(es).',
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('Error al notificar: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'mensaje' => 'Error al enviar la notificación: ' . $e->getMessage(),
-            ], 500);
+            return back()->with('error', 'Error en la aprobación masiva: '.$e->getMessage());
         }
     }
 }

@@ -64,15 +64,19 @@
                     @endforeach
                 </select>
             </div>
-            <div style="display:flex;flex-direction:column;gap:6px;">
-                <label style="font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;">Categoría</label>
-                <select name="id_categoria" style="width:170px;padding:8px 12px;border-radius:8px;border:1.5px solid #e2e8f0;background:#f8fafc;font-size:13px;">
-                    <option value="">— Todas las categorías —</option>
-                    @foreach($categorias as $cat)
-                        <option value="{{ $cat->id_categoria }}" {{ request('id_categoria') == $cat->id_categoria ? 'selected' : '' }}>{{ $cat->nombre }}</option>
-                    @endforeach
-                </select>
-            </div>
+            @if ($categorias->isNotEmpty())
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                    <label style="font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;">Categoría con activos</label>
+                    <select name="id_categoria" style="width:210px;padding:8px 12px;border-radius:8px;border:1.5px solid #e2e8f0;background:#f8fafc;font-size:13px;">
+                        <option value="">— Todas las categorías —</option>
+                        @foreach($categorias as $cat)
+                            <option value="{{ $cat->id_categoria }}" {{ request('id_categoria') == $cat->id_categoria ? 'selected' : '' }}>
+                                ID {{ $cat->id_categoria }} - {{ $cat->nombre }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
             <div style="display:flex;flex-direction:column;gap:6px;">
                 <label style="font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;">Tipo de Bien</label>
                 <select name="tipo_bien" style="width:150px;padding:8px 12px;border-radius:8px;border:1.5px solid #e2e8f0;background:#f8fafc;font-size:13px;">

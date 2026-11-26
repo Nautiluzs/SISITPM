@@ -80,6 +80,8 @@ Route::middleware(['auth', 'usuario.activo'])->group(function () {
         return view('manual.index');
     })->name('manual.index');
     Route::get('/configuracion', [ConfiguracionController::class, 'index'])->name('configuracion.index');
+    Route::post('/configuracion/texto-cumplimiento', [ConfiguracionController::class, 'updateTextoCumplimiento'])->name('configuracion.texto-cumplimiento');
+    Route::post('/configuracion/texto-legal', [ConfiguracionController::class, 'updateTextoLegal'])->name('configuracion.texto-legal');
 
     // Perfil
     Route::prefix('profile')->name('profile.')->group(function () {
@@ -166,7 +168,9 @@ Route::middleware(['auth', 'usuario.activo'])->group(function () {
         Route::get('/', [CategoriaController::class, 'index'])->name('index');
 
         Route::middleware('rol:ADMINISTRADOR')->group(function () {
+            Route::get('/crear', [CategoriaController::class, 'create'])->name('create');
             Route::post('/', [CategoriaController::class, 'store'])->name('store');
+            Route::get('/{id}/editar', [CategoriaController::class, 'edit'])->name('edit');
             Route::put('/{id}', [CategoriaController::class, 'update'])->name('update');
             Route::delete('/{id}', [CategoriaController::class, 'destroy'])->name('destroy');
         });
@@ -183,7 +187,6 @@ Route::middleware(['auth', 'usuario.activo'])->group(function () {
         Route::get('/exportar/excel', [ActivoController::class, 'excel'])->name('excel');
         Route::get('/codigo/{codigo?}', [ActivoController::class, 'buscarPorCodigo'])->name('buscarPorCodigo');
         Route::get('/no-activos', [ActivoController::class, 'noActivos'])->name('noActivos');
-        Route::get('/grupo/{id_categoria}/{nombre}', [ActivoController::class, 'verGrupo'])->name('grupo');
 
         Route::get('/', [ActivoController::class, 'index'])->name('index');
         Route::post('/', [ActivoController::class, 'store'])->name('store')->middleware('rol:ADMINISTRADOR');
@@ -241,9 +244,9 @@ Route::middleware(['auth', 'usuario.activo'])->group(function () {
             Route::get('/', [VerificacionController::class, 'index'])->name('index');
             Route::post('/guardar-item', [VerificacionController::class, 'guardarItem'])->name('guardarItem');
             Route::post('/finalizar', [VerificacionController::class, 'finalizar'])->name('finalizar');
+            Route::post('/reabrir', [VerificacionController::class, 'reabrir'])->name('reabrir');
             Route::match(['get', 'post'], '/exportar/pdf', [VerificacionController::class, 'exportarPdf'])->name('pdf');
             Route::match(['get', 'post'], '/exportar/excel', [VerificacionController::class, 'exportarExcel'])->name('excel');
-            Route::get('/categorias-por-ambiente', [VerificacionController::class, 'categoriasPorAmbiente'])->name('categoriasPorAmbiente');
         });
 
     // ==========================================================
@@ -270,9 +273,6 @@ Route::middleware(['auth', 'usuario.activo'])->group(function () {
             Route::post('/{id}/corregir', [AprobacionVerificacionController::class, 'corregir'])->name('corregir');
             Route::post('/ambiente/{ambienteId}/aprobar-correctas', [AprobacionVerificacionController::class, 'aprobarCorrectasDeAmbiente'])->name('aprobar-ambiente');
         });
-
-    Route::post('/notificar-finalizacion', [AprobacionVerificacionController::class, 'notificarFinalizacion'])
-        ->name('notificar-finalizacion');
 
     // ==========================================================
     // ACTAS (BAJA, TRANSFERENCIA, RECEPCIÓN INDIVIDUAL, LIBERACIÓN)
@@ -314,7 +314,9 @@ Route::middleware(['auth', 'usuario.activo'])->group(function () {
         Route::prefix('recepcion')->name('recepcion.')->group(function () {
             Route::get('/', [ActaRecepcionController::class, 'index'])->name('index');
             Route::get('/pdf/{id}', [ActaRecepcionController::class, 'pdf'])->name('pdf');
+            Route::post('/pdf/{id}', [ActaRecepcionController::class, 'generarPdf'])->name('pdf.generate');
             Route::get('/pdf-multiple', [ActaRecepcionController::class, 'pdfMultiple'])->name('pdf.multiple');
+            Route::post('/pdf-multiple', [ActaRecepcionController::class, 'generarPdfMultiple'])->name('pdf.multiple.generate');
             Route::get('/activo/{activo}/pdf', [ActaRecepcionController::class, 'actaRecepcionActivoPdf'])->name('activo.pdf');
             Route::get('/activo/{activo}/excel', [ActaRecepcionController::class, 'actaRecepcionActivoExcel'])->name('activo.excel');
         });

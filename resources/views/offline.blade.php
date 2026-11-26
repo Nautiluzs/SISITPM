@@ -234,9 +234,11 @@
         </div>
 
         <div class="offline-actions">
-            <a href="{{ route('verificaciones.index') }}" class="offline-btn-primary">
-                🔍 Ir a verificación física
-            </a>
+            @if (auth()->check() && auth()->user()->puedeRegistrarVerificacion())
+                <a href="{{ route('verificaciones.index') }}" class="offline-btn-primary">
+                    🔍 Ir a verificación física
+                </a>
+            @endif
             <button type="button" onclick="window.location.reload()" class="offline-btn-ghost">
                 🔄 Reintentar ahora
             </button>

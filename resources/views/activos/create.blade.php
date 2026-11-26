@@ -30,10 +30,6 @@
     <form method="POST" action="{{ route('activos.store') }}" enctype="multipart/form-data" id="activo-form" style="padding:24px 26px; overflow-y:auto;">
         @csrf
 
-        @if(request('id_categoria'))
-            <input type="hidden" name="id_categoria_origen" value="{{ request('id_categoria') }}">
-        @endif
-
         <style>
             .af-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
             .af-grid div { display:flex; flex-direction:column; }
@@ -164,13 +160,13 @@
             </div>
 
             <div>
-                <label class="af-label">Categoría (Ambiente) <span class="af-asterisco visible">*</span></label>
+                <label class="af-label">Categoría <span class="af-asterisco visible">*</span></label>
                 <select name="id_categoria" id="id_categoria" class="af-input">
-                    <option value="">— Seleccione categoría del ambiente —</option>
+                    <option value="">— Seleccione categoría —</option>
                     @foreach ($categorias as $item)
-                        <option value="{{ $item->id_categoria }}" data-ambiente="{{ $item->id_ambiente }}"
+                        <option value="{{ $item->id_categoria }}"
                             {{ (old('id_categoria', request('id_categoria')) == $item->id_categoria) ? 'selected' : '' }}>
-                            [{{ $item->codigo }}] {{ $item->nombre }}
+                            ID {{ $item->id_categoria }} - {{ $item->nombre }}
                         </option>
                     @endforeach
                 </select>
@@ -180,8 +176,7 @@
             {{-- Ambiente --}}
             <div>
                 <label class="af-label">Ambiente <span class="af-asterisco visible">*</span></label>
-                <select name="id_ambiente" id="id_ambiente" class="af-input"
-                        onchange="filtrarCategoriasPorAmbiente(this.value)">
+                <select name="id_ambiente" id="id_ambiente" class="af-input">
                     <option value="">— Seleccione ambiente —</option>
                     @foreach ($ambientes as $item)
                         <option value="{{ $item->id_ambiente }}"
@@ -389,30 +384,6 @@
     }
 
     // ============================================
-    // FILTRAR CATEGORÍAS POR AMBIENTE
-    // ============================================
-    function filtrarCategoriasPorAmbiente(ambienteId, mantenerSeleccion = false) {
-        const selectCat = document.getElementById('id_categoria');
-        if (!selectCat) return;
-        const valorActual = mantenerSeleccion ? selectCat.value : "";
-        const opciones = selectCat.querySelectorAll('option');
-
-        opciones.forEach(opt => {
-            if (opt.value === "") { opt.style.display = "block"; return; }
-            const ambOpt = opt.getAttribute('data-ambiente');
-            const visible = (!ambienteId || ambOpt === ambienteId);
-            opt.style.display = visible ? "block" : "none";
-            if (!visible && opt.selected) opt.selected = false;
-        });
-
-        if (mantenerSeleccion && valorActual) {
-            selectCat.value = valorActual;
-        } else {
-            selectCat.value = "";
-        }
-    }
-
-    // ============================================
     // FILTRAR CUSTODIOS
     // ============================================
     function filtrarCustodios(texto) {
@@ -520,11 +491,6 @@
     (function() {
         const selectBien = document.getElementById('select-tipo-bien');
         if (selectBien) aplicarTipoBien(selectBien.value);
-
-        const ambiente = document.getElementById('id_ambiente');
-        if (ambiente && ambiente.value) {
-            filtrarCategoriasPorAmbiente(ambiente.value, true);
-        }
 
         // ⭐ Asegurar que el RV tenga el estado visual correcto al cargar
         const rvSi = document.getElementById('rv-si');

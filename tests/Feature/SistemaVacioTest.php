@@ -35,12 +35,12 @@ class SistemaVacioTest extends TestCase
         $carrera = Carrera::create(['codigo' => 'SIF', 'nombre' => 'Sistemas Informáticos']);
 
         $this->ambiente = Ambiente::create([
-            'codigo'     => 'LAB-3',
-            'nombre'     => 'Laboratorio 3',
+            'codigo' => 'LAB-3',
+            'nombre' => 'Laboratorio 3',
             'id_carrera' => $carrera->id_carrera,
         ]);
 
-        Categoria::create(['codigo' => 'EQP', 'nombre' => 'Equipos']);
+        Categoria::create(['nombre' => 'Equipos']);
         FuenteFinanciamiento::create(['codigo' => 'ADQ', 'nombre' => 'Adquisición']);
 
         $this->custodio = User::factory()->custodio()->create(['id_carrera' => $carrera->id_carrera]);
@@ -48,8 +48,8 @@ class SistemaVacioTest extends TestCase
         $item = Item::create([
             'numero_item' => '131',
             'descripcion' => 'Docente Custodio - Laboratorio 3',
-            'unidad'      => 'Laboratorio 3',
-            'id_carrera'  => $carrera->id_carrera,
+            'unidad' => 'Laboratorio 3',
+            'id_carrera' => $carrera->id_carrera,
             'id_ambiente' => $this->ambiente->id_ambiente,
         ]);
 

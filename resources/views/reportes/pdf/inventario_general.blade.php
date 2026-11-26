@@ -230,12 +230,6 @@
             }
         }
 
-        $admin = \App\Models\User::where('rol', 'ADMINISTRADOR')->where('estado', 'ACTIVO')->first();
-        if ($admin && !in_array($admin->id_usuario, $idsAgregados)) {
-            $firmantes[] = ['nombre' => $admin->nombre_completo, 'ci' => $admin->ci, 'rol' => 'ADMINISTRADORA'];
-            $idsAgregados[] = $admin->id_usuario;
-        }
-
         $inventariador = \App\Models\User::where('rol', 'INVENTARIADOR')->where('estado', 'ACTIVO')->first();
         if ($inventariador && !in_array($inventariador->id_usuario, $idsAgregados)) {
             $firmantes[] = ['nombre' => $inventariador->nombre_completo, 'ci' => $inventariador->ci, 'rol' => 'INVENTARIADOR'];
@@ -254,10 +248,12 @@
                 ['nombre' => 'Lic. Patricia Regina Flores Chuquimia', 'ci' => '3451328', 'rol' => 'CUSTODIO'],
                 ['nombre' => 'Lic. Johnny Chavez Quispe', 'ci' => '6032467', 'rol' => 'CUSTODIO'],
                 ['nombre' => 'Lic. Eliza Nina Coronel', 'ci' => '4286280', 'rol' => 'CUSTODIO'],
-                ['nombre' => 'Lic. Ana Lía Zapana Cortez', 'ci' => '4756925', 'rol' => 'ADMINISTRADORA'],
+                ['nombre' => 'ANA LÍA ZAPANA CORTEZ', 'ci' => '4756925', 'rol' => 'ADMINISTRADOR'],
                 ['nombre' => 'Lic. Juan Carlos Osco', 'ci' => '4243543', 'rol' => 'INVENTARIADOR'],
                 ['nombre' => 'Lic. Jhimmy Ovidio Sirpa', 'ci' => '4960313', 'rol' => 'RECTOR'],
             ];
+        } else {
+            $firmantes[] = ['nombre' => 'ANA LÍA ZAPANA CORTEZ', 'ci' => '4756925', 'rol' => 'ADMINISTRADOR'];
         }
 
         $cols = 3;

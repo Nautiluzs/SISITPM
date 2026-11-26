@@ -15,7 +15,7 @@
             </span>
             <h1 style="font-size: 28px; font-weight: 800; margin: 8px 0 6px 0;">Verificación por Ambiente</h1>
             <p style="opacity: 0.95; font-size: 14px; margin: 0; line-height: 1.5;">
-                Selecciona la carrera y el ambiente para verificar la presencia física de los activos mediante códigos QR o de manera manual.
+                Selecciona la carrera y el ambiente para ver el inventario completo y verificar cada activo mediante códigos QR o de manera manual.
             </p>
         </div>
 
@@ -97,7 +97,7 @@
 
             <div>
                 <label style="font-size: 11px; font-weight: 800; color: #64748b; display: block; margin-bottom: 6px; text-transform: uppercase;">2. Ambiente</label>
-                <select name="ambiente_id" id="select-ambiente" onchange="cargarCategoriasYEnviar()" style="width: 100%; padding: 11px 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 13px; color: #1e293b; cursor: pointer; outline: none;" {{ $ambientes->isEmpty() ? 'disabled' : '' }}>
+                <select name="ambiente_id" id="select-ambiente" onchange="document.getElementById('form-filtros').submit()" style="width: 100%; padding: 11px 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 13px; color: #1e293b; cursor: pointer; outline: none;" {{ $ambientes->isEmpty() ? 'disabled' : '' }}>
                     <option value="">— Seleccionar ambiente —</option>
                     @foreach($ambientes as $a)
                         <option value="{{ $a->id_ambiente }}" {{ request('ambiente_id') == $a->id_ambiente ? 'selected' : '' }}>
@@ -107,20 +107,8 @@
                 </select>
             </div>
 
-            <div>
-                <label style="font-size: 11px; font-weight: 800; color: #64748b; display: block; margin-bottom: 6px; text-transform: uppercase;">3. Categoría <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(opcional)</span></label>
-                <select name="categoria_id" id="select-categoria" onchange="document.getElementById('form-filtros').submit()" style="width: 100%; padding: 11px 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 13px; color: #1e293b; cursor: pointer; outline: none;" {{ $categorias->isEmpty() ? 'disabled' : '' }}>
-                    <option value="">Todas las categorías</option>
-                    @foreach($categorias as $cat)
-                        <option value="{{ $cat->id_categoria }}" {{ request('categoria_id') == $cat->id_categoria ? 'selected' : '' }}>
-                            {{ $cat->nombre }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-
             <div style="display: flex; gap: 8px;">
-                @if(request('carrera_id') || request('ambiente_id') || request('categoria_id'))
+                @if(request('carrera_id') || request('ambiente_id'))
                     <a href="{{ route('verificaciones.index') }}" style="flex: 1; padding: 11px 14px; background: #f1f5f9; color: #334155; border-radius: 10px; font-size: 13px; font-weight: 700; text-align: center; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
                         Limpiar
                     </a>
@@ -143,13 +131,8 @@
                 <span style="background: #e0e7ff; color: #3730a3; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; border: 1px solid #c7d2fe;">
                     🏢 {{ $ambienteSeleccionado->nombre }}
                 </span>
-                @if(isset($categoriaSeleccionada) && $categoriaSeleccionada)
-                    <span style="background: #fdf2f8; color: #be185d; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; border: 1px solid #fbcfe8;">
-                        📁 {{ $categoriaSeleccionada->nombre }}
-                    </span>
-                @endif
                 <span style="font-size: 12px; color: #94a3b8; margin-left: auto; font-weight: 600;">
-                    {{ $activos->count() }} activo(s) encontrado(s)
+                    {{ $activos->count() }} activo(s) en este ambiente
                 </span>
             </div>
         @endif
@@ -163,7 +146,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                 <div style="font-size: 13px; color: #475569; display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 16px;">⚡</span>
-                    <span><strong style="color: #1e293b;">Acciones de auditoría:</strong> Exporta los resultados o finaliza la verificación.</span>
+                    <span><strong style="color: #1e293b;">Acciones de auditoría:</strong> registra todos los activos antes de finalizar.</span>
                 </div>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                     <button type="button" onclick="generarReporte('pdf')" style="padding: 9px 16px; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer;">
@@ -174,6 +157,9 @@
                     </button>
                     <button type="button" onclick="finalizarVerificacion()" id="btn-finalizar-verificacion" style="padding: 9px 16px; background: #7c3aed; color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 4px rgba(124, 58, 237, 0.2);">
                         ✅ Finalizar Verificación
+                    </button>
+                    <button type="button" onclick="reabrirVerificacion()" id="btn-reabrir-verificacion" style="display: none; padding: 9px 16px; background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer;">
+                        ↻ Volver a iniciar
                     </button>
 
                     <button type="button" onclick="descargarCatalogoOffline()" id="btn-catalogo-offline"
@@ -455,9 +441,10 @@
     const procesandoActivos = new Set();
 
     const AMBIENTE_ID = "{{ $ambienteSeleccionado->id_ambiente ?? '' }}";
+    const AMBIENTE_NOMBRE = @json($ambienteSeleccionado->nombre ?? '');
     const GUARDAR_ITEM_URL = "{{ route('verificaciones.guardarItem') }}";
     const FINALIZAR_URL = "{{ route('verificaciones.finalizar') }}";
-    const CATEGORIAS_URL = "{{ route('verificaciones.categoriasPorAmbiente') }}";
+    const REABRIR_URL = "{{ route('verificaciones.reabrir') }}";
     const CSRF_TOKEN = "{{ csrf_token() }}";
     const PUEDE_VERIFICAR = {{ $puedeVerificar ? 'true' : 'false' }};
 
@@ -596,37 +583,6 @@
         }
     }
 
-    async function cargarCategoriasYEnviar() {
-        const ambienteId = document.getElementById('select-ambiente').value;
-        const selectCategoria = document.getElementById('select-categoria');
-        selectCategoria.innerHTML = '<option value="">Todas las categorías</option>';
-
-        if (ambienteId) {
-            try {
-                const res = await fetch(`${CATEGORIAS_URL}?ambiente_id=${ambienteId}`, {
-                    headers: { 'Accept': 'application/json' }
-                });
-                const json = await res.json();
-                if (json.success && json.categorias.length > 0) {
-                    selectCategoria.disabled = false;
-                    json.categorias.forEach(cat => {
-                        const opt = document.createElement('option');
-                        opt.value = cat.id_categoria;
-                        opt.textContent = cat.nombre;
-                        selectCategoria.appendChild(opt);
-                    });
-                } else {
-                    selectCategoria.disabled = true;
-                }
-            } catch (err) {
-                selectCategoria.disabled = true;
-            }
-        } else {
-            selectCategoria.disabled = true;
-        }
-        document.getElementById('form-filtros').submit();
-    }
-
      function actualizarContadores() {
         const verificados = document.querySelectorAll('tr.fila-verificada').length;
         const observados  = document.querySelectorAll('tr.fila-observada').length;
@@ -721,101 +677,429 @@
         }
     }
 
-    async function finalizarVerificacion() {
-        if (!AMBIENTE_ID) return;
+    function obtenerResumenVerificacion() {
+        const filas = Array.from(document.querySelectorAll('tr[data-id]'));
+        const verificados = filas.filter(f => f.classList.contains('fila-verificada')).length;
+        const observados = filas.filter(f => f.classList.contains('fila-observada')).length;
+        const faltantes = filas.filter(f => !f.classList.contains('fila-verificada') && !f.classList.contains('fila-observada')).map(fila => {
+            const celdas = fila.querySelectorAll('td');
+            const codigo = fila.getAttribute('data-codigo') || (celdas[2]?.querySelector('div')?.textContent?.trim() ?? '');
+            const nombre = celdas[3]?.querySelector('div')?.textContent?.trim() || 'Activo sin nombre';
+            return {
+                id_activo: Number(fila.getAttribute('data-id')),
+                codigo_activo: codigo,
+                nombre,
+            };
+        });
 
-        const totalFilas = document.querySelectorAll('tr[data-id]').length;
-        const verificados = document.querySelectorAll('tr.fila-verificada').length;
-        const observados  = document.querySelectorAll('tr.fila-observada').length;
-        const pendientes  = totalFilas - verificados - observados;
+        return {
+            total: filas.length,
+            verificados,
+            observados,
+            faltantes,
+        };
+    }
 
-        if (pendientes > 0) {
-            const r = await Swal.fire({
-                title: 'Faltan activos por verificar',
-                text: `Hay ${pendientes} activo(s) sin verificar. ¿Deseas finalizar de todos modos?`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Finalizar de todos modos',
-                cancelButtonText: 'Cancelar',
-            });
-            if (!r.isConfirmed) return;
-        }
+    function escaparHtml(texto) {
+        return String(texto ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
 
-        const tiempoFormateado = formatearTiempo(segundosTranscurridos);
+    async function pedirUbicacionesFaltantes(activosFaltantes, resumen) {
+        const filasHtml = activosFaltantes.map(activo => `
+            <tr>
+                <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;vertical-align:top;">
+                    <div style="font-weight:800;color:#0f172a;font-size:13px;">${escaparHtml(activo.codigo_activo)}</div>
+                    <div style="font-size:12px;color:#64748b;margin-top:2px;">${escaparHtml(activo.nombre)}</div>
+                </td>
+                <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;vertical-align:top;">
+                    <input
+                        type="text"
+                        class="swal-faltante-observacion"
+                        data-activo-id="${Number(activo.id_activo)}"
+                        maxlength="500"
+                        placeholder="Ej.: laboratorio, oficina o No localizado"
+                        style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box;"
+                    >
+                </td>
+            </tr>
+        `).join('');
 
-        Swal.fire({
-            title: '¿Finalizar verificación?',
+        const totalActivos = Number(resumen?.total ?? activosFaltantes.length);
+        const totalVerificados = Number(resumen?.verificados ?? 0);
+
+        const resultado = await Swal.fire({
+            title: 'Activos faltantes',
+            width: 920,
             html: `
-                <div style="text-align:center;">
-                    <div style="font-size:56px;margin-bottom:12px;">✅</div>
-                    <p style="font-size:15px;color:#475569;margin:0 0 8px 0;">
-                        Se enviará a aprobación y se <strong>notificará al administrador</strong>.
-                    </p>
-                    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 14px;font-size:13px;color:#1d4ed8;font-weight:600;">
-                        ⏱️ Tiempo: ${tiempoFormateado}
+                <p style="margin:0 0 14px;color:#475569;font-size:14px;">Antes de finalizar, escribe una observación o ubicación para cada activo no localizado.</p>
+                <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:16px;">
+                    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:18px 16px;text-align:center;">
+                        <div style="font-size:12px;color:#166534;font-weight:800;text-transform:uppercase;letter-spacing:.04em;">Total verificados</div>
+                        <div style="font-size:42px;line-height:1;font-weight:900;color:#166534;margin-top:8px;">${totalVerificados}</div>
+                    </div>
+                    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;padding:18px 16px;text-align:center;">
+                        <div style="font-size:12px;color:#1d4ed8;font-weight:800;text-transform:uppercase;letter-spacing:.04em;">Total activos del ambiente</div>
+                        <div style="font-size:42px;line-height:1;font-weight:900;color:#1d4ed8;margin-top:8px;">${totalActivos}</div>
                     </div>
                 </div>
+                <div style="max-height:340px;overflow:auto;border:1px solid #e2e8f0;border-radius:12px;">
+                    <table style="width:100%;border-collapse:collapse;text-align:left;">
+                        <thead style="position:sticky;top:0;background:#f8fafc;z-index:1;">
+                            <tr>
+                                <th style="padding:10px 12px;font-size:11px;color:#475569;text-transform:uppercase;border-bottom:1px solid #e2e8f0;">Activo</th>
+                                <th style="padding:10px 12px;font-size:11px;color:#475569;text-transform:uppercase;border-bottom:1px solid #e2e8f0;">Observación / ubicación</th>
+                            </tr>
+                        </thead>
+                        <tbody>${filasHtml}</tbody>
+                    </table>
+                </div>
             `,
-            icon: 'question',
+            focusConfirm: false,
             showCancelButton: true,
+            confirmButtonText: 'Guardar y finalizar',
+            cancelButtonText: 'Cancelar',
             confirmButtonColor: '#7c3aed',
             cancelButtonColor: '#64748b',
-            confirmButtonText: '✅ Finalizar',
-            cancelButtonText: 'Cancelar',
-            reverseButtons: true,
-        }).then(async (result) => {
-            if (!result.isConfirmed) return;
-
-            try {
-                const res = await fetch(FINALIZAR_URL, {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': CSRF_TOKEN,
-                    },
-                    body: JSON.stringify({
-                        ambiente_id: AMBIENTE_ID,
-                        tiempo_transcurrido: tiempoFormateado,
-                    }),
-                });
-                const json = await res.json();
-
-                if (json.success) {
-                    mostrarNotificacion('✅ Verificación finalizada. Se notificó al administrador.', 'success');
-
-                    const btn = document.getElementById('btn-finalizar-verificacion');
-                    if (btn) {
-                        btn.disabled = true;
-                        btn.style.opacity = '0.5';
-                        btn.innerHTML = '✅ Finalizada';
+            preConfirm: () => {
+                const inputs = Array.from(document.querySelectorAll('.swal-faltante-observacion'));
+                const faltantes = [];
+                for (const input of inputs) {
+                    const ubicacion = input.value.trim();
+                    if (!ubicacion) {
+                        Swal.showValidationMessage('Completa la observación de todos los activos faltantes.');
+                        input.focus();
+                        return false;
                     }
-
-                    estaCorriendo = false;
-                    localStorage.setItem(storageKeyEstado, 'finalizado');
-                    localStorage.removeItem(storageKeyProgreso);
-                    if (timerInterval) clearInterval(timerInterval);
-
-                    const btnTimer = document.getElementById('btn-toggle-timer');
-                    if (btnTimer) {
-                        btnTimer.disabled = true;
-                        btnTimer.style.opacity = '0.5';
-                        btnTimer.innerHTML = '✓ Completado';
-                    }
-                } else {
-                    mostrarNotificacion('Error: ' + (json.error || json.message), 'error');
+                    faltantes.push({
+                        id_activo: Number(input.dataset.activoId),
+                        ubicacion,
+                    });
                 }
-            } catch (err) {
-                mostrarNotificacion('Error de conexión.', 'error');
-            }
+                return faltantes;
+            },
+        });
+
+        return resultado.isConfirmed ? resultado.value : null;
+    }
+
+    async function enviarFinalizacion(tiempoFormateado, ubicaciones = []) {
+        return fetch(FINALIZAR_URL, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': CSRF_TOKEN,
+            },
+            body: JSON.stringify({
+                ambiente_id: AMBIENTE_ID,
+                tiempo_transcurrido: tiempoFormateado,
+                faltantes: ubicaciones,
+            }),
         });
     }
 
+        async function finalizarVerificacion() {
+        if (!AMBIENTE_ID) return;
+
+        const resumen = obtenerResumenVerificacion();
+        const tiempoFormateado = formatearTiempo(segundosTranscurridos);
+
+        let ubicaciones = [];
+        if (resumen.faltantes.length > 0) {
+            ubicaciones = await pedirUbicacionesFaltantes(resumen.faltantes, resumen);
+            if (!ubicaciones) return;
+        } else {
+            const confirmacion = await Swal.fire({
+                title: 'Finalizar verificación',
+                width: 760,
+                html: `
+                    <p style="margin:0 0 14px;color:#475569;font-size:14px;">Todos los activos del ambiente están verificados u observados. Se enviará la aprobación.</p>
+                    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+                        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:20px 16px;text-align:center;">
+                            <div style="font-size:12px;color:#166534;font-weight:800;text-transform:uppercase;letter-spacing:.04em;">Total verificados</div>
+                            <div style="font-size:48px;line-height:1;font-weight:900;color:#166534;margin-top:8px;">${resumen.verificados}</div>
+                        </div>
+                        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;padding:20px 16px;text-align:center;">
+                            <div style="font-size:12px;color:#1d4ed8;font-weight:800;text-transform:uppercase;letter-spacing:.04em;">Total activos del ambiente</div>
+                            <div style="font-size:48px;line-height:1;font-weight:900;color:#1d4ed8;margin-top:8px;">${resumen.total}</div>
+                        </div>
+                    </div>
+                    <p style="margin:14px 0 0;color:#64748b;font-size:13px;">Tiempo: ${escaparHtml(tiempoFormateado)}. No se enviará correo.</p>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#7c3aed',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Finalizar',
+                cancelButtonText: 'Cancelar',
+                reverseButtons: true,
+            });
+
+            if (!confirmacion.isConfirmed) return;
+        }
+
+        try {
+            let response = await enviarFinalizacion(tiempoFormateado, ubicaciones);
+            let json = await response.json();
+
+            if (response.status === 422 && Array.isArray(json.faltantes)) {
+                const desincronizados = json.faltantes.filter(activo => {
+                    const fila = document.querySelector(`tr[data-id="${activo.id_activo}"]`);
+                    return fila && (fila.classList.contains('fila-verificada') || fila.classList.contains('fila-observada'));
+                });
+
+                if (desincronizados.length > 0) {
+                    let reguardados = 0;
+                    for (const activo of desincronizados) {
+                        const fila = document.querySelector(`tr[data-id="${activo.id_activo}"]`);
+                        if (!fila) continue;
+                        const esObservada = fila.classList.contains('fila-observada');
+                        const obs = fila.getAttribute('data-obs') || '';
+                        const guardado = await guardarVerificacion(
+                            Number(activo.id_activo),
+                            AMBIENTE_ID,
+                            !esObservada,
+                            esObservada ? obs : '',
+                            null,
+                            false
+                        );
+                        if (guardado) reguardados++;
+                    }
+
+                    if (reguardados === desincronizados.length) {
+                        response = await enviarFinalizacion(tiempoFormateado, ubicaciones);
+                        json = await response.json();
+                    } else {
+                        desincronizados.forEach(activo => {
+                            const fila = document.querySelector(`tr[data-id="${activo.id_activo}"]`);
+                            if (!fila) return;
+                            const rowId = fila.id;
+                            const sigueDesincronizado = json.faltantes.some(f => Number(f.id_activo) === Number(activo.id_activo));
+                            if (sigueDesincronizado) {
+                                restaurarEstadoFila(rowId, {
+                                    clase: '', obs: '', badgeStyle: 'display: inline-block; padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 10px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;', badgeText: 'Pendiente', obsTexto: '', obsTitle: '', obsDisplay: 'none'
+                                });
+                            }
+                        });
+                        mostrarNotificacion('Algunos activos no se pudieron guardar en el servidor. Vuelve a verificarlos y luego finaliza.', 'error');
+                        return;
+                    }
+                } else {
+                    const resumenActual = obtenerResumenVerificacion();
+                    ubicaciones = await pedirUbicacionesFaltantes(json.faltantes, {
+                        total: resumenActual.total,
+                        verificados: resumenActual.verificados,
+                    });
+                    if (!ubicaciones) return;
+
+                    response = await enviarFinalizacion(tiempoFormateado, ubicaciones);
+                    json = await response.json();
+                }
+            }
+
+            if (!response.ok || !json.success) {
+                mostrarNotificacion('Error: ' + (json.error || json.message || 'No se pudo finalizar.'), 'error');
+                return;
+            }
+
+            const totalActivos = Number(json.total_activos ?? 0);
+            const totalVerificados = Number(json.total_verificados ?? 0);
+            const totalObservados = Number(json.total_observados ?? 0);
+            const totalNoLocalizados = Number(json.total_no_localizados ?? 0);
+
+            await Swal.fire({
+                icon: 'success',
+                title: 'Verificación finalizada',
+                width: 760,
+                html: `
+                    <p style="margin:0 0 14px;color:#475569;font-size:14px;">La verificación fue enviada a aprobación. No se envió correo.</p>
+                    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px;">
+                        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:20px 16px;text-align:center;">
+                            <div style="font-size:12px;color:#166534;font-weight:800;text-transform:uppercase;letter-spacing:.04em;">Total verificados</div>
+                            <div style="font-size:48px;line-height:1;font-weight:900;color:#166534;margin-top:8px;">${totalVerificados}</div>
+                        </div>
+                        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;padding:20px 16px;text-align:center;">
+                            <div style="font-size:12px;color:#1d4ed8;font-weight:800;text-transform:uppercase;letter-spacing:.04em;">Total activos del ambiente</div>
+                            <div style="font-size:48px;line-height:1;font-weight:900;color:#1d4ed8;margin-top:8px;">${totalActivos}</div>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;text-align:left;">
+                        <div style="background:#fefce8;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;">
+                            <div style="font-size:11px;color:#854d0e;font-weight:700;text-transform:uppercase;">Con observación</div>
+                            <div style="font-size:20px;font-weight:800;color:#854d0e;">${totalObservados}</div>
+                        </div>
+                        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:10px 12px;">
+                            <div style="font-size:11px;color:#991b1b;font-weight:700;text-transform:uppercase;">No localizados</div>
+                            <div style="font-size:20px;font-weight:800;color:#991b1b;">${totalNoLocalizados}</div>
+                        </div>
+                    </div>
+                `,
+                confirmButtonText: 'Aceptar',
+                confirmButtonColor: '#7c3aed',
+            });
+
+            const btn = document.getElementById('btn-finalizar-verificacion');
+            if (btn) {
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.innerHTML = '? Finalizada';
+            }
+
+            const btnReabrir = document.getElementById('btn-reabrir-verificacion');
+            if (btnReabrir) btnReabrir.style.display = 'inline-flex';
+
+            estaCorriendo = false;
+            localStorage.setItem(storageKeyEstado, 'finalizado');
+            localStorage.removeItem(storageKeyProgreso);
+            if (timerInterval) clearInterval(timerInterval);
+
+            const btnTimer = document.getElementById('btn-toggle-timer');
+            if (btnTimer) {
+                btnTimer.disabled = true;
+                btnTimer.style.opacity = '0.5';
+                btnTimer.innerHTML = '? Completado';
+            }
+        } catch (err) {
+            mostrarNotificacion('Error de conexion al finalizar la verificacion.', 'error');
+        }
+    }
+
+    async function reabrirVerificacion() {
+        if (!AMBIENTE_ID) return;
+
+        const confirmacion = await Swal.fire({
+            title: '?Volver a iniciar verificación?',
+            text: 'Se reiniciará la verificación de este ambiente desde cero. Se quitarán las marcas y observaciones actuales para empezar de nuevo.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ea580c',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'S?, iniciar desde cero',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true,
+        });
+
+        if (!confirmacion.isConfirmed) return;
+
+        try {
+            const response = await fetch(REABRIR_URL, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': CSRF_TOKEN,
+                },
+                body: JSON.stringify({ ambiente_id: AMBIENTE_ID }),
+            });
+            const json = await response.json();
+
+            if (!response.ok || !json.success) {
+                mostrarNotificacion('Error: ' + (json.error || json.message || 'No se pudo reiniciar la verificación.'), 'error');
+                return;
+            }
+
+            document.querySelectorAll('tr[data-id]').forEach(fila => {
+                const rowId = fila.id;
+                fila.classList.remove('fila-verificada', 'fila-observada');
+                fila.setAttribute('data-obs', '');
+                const badge = document.getElementById(`badge-${rowId}`);
+                if (badge) {
+                    badge.style.cssText = 'display: inline-block; padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 10px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;';
+                    badge.textContent = 'Pendiente';
+                }
+                const obsTexto = document.getElementById(`obs-texto-${rowId}`);
+                if (obsTexto) {
+                    obsTexto.textContent = '';
+                    obsTexto.title = '';
+                    obsTexto.style.display = 'none';
+                }
+            });
+
+            localStorage.removeItem(storageKeyEstado);
+            localStorage.removeItem(storageKeySegundos);
+            localStorage.removeItem(storageKeyInicioReal);
+            localStorage.removeItem(storageKeyProgreso);
+            estaCorriendo = false;
+            segundosTranscurridos = 0;
+            if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+            actualizarDisplayCronometro();
+            actualizarContadores();
+
+            const btnFin = document.getElementById('btn-finalizar-verificacion');
+            if (btnFin) {
+                btnFin.disabled = false;
+                btnFin.style.opacity = '1';
+                btnFin.innerHTML = '? Finalizar Verificación';
+            }
+
+            const btnReabrir = document.getElementById('btn-reabrir-verificacion');
+            if (btnReabrir) btnReabrir.style.display = 'none';
+
+            const btnTimer = document.getElementById('btn-toggle-timer');
+            if (btnTimer) {
+                btnTimer.disabled = false;
+                btnTimer.style.opacity = '1';
+                btnTimer.innerHTML = ' Iniciar Verificación';
+                btnTimer.style.background = '#2563eb';
+                btnTimer.style.boxShadow = '0 2px 4px rgba(37,99,235,0.2)';
+            }
+
+            mostrarNotificacion(json.mensaje || 'Verificación reiniciada desde cero.', 'success');
+        } catch (err) {
+            mostrarNotificacion('Error de conexión al reiniciar la verificación.', 'error');
+        }
+    }
+
+    function capturarEstadoFila(rowId) {
+        const fila = document.getElementById(rowId);
+        const badge = document.getElementById(`badge-${rowId}`);
+        const obsTexto = document.getElementById(`obs-texto-${rowId}`);
+        return {
+            clase: fila?.classList.contains('fila-observada') ? 'fila-observada' : (fila?.classList.contains('fila-verificada') ? 'fila-verificada' : ''),
+            obs: fila?.getAttribute('data-obs') || '',
+            badgeStyle: badge?.getAttribute('style') || '',
+            badgeText: badge?.textContent || 'Pendiente',
+            obsTexto: obsTexto?.textContent || '',
+            obsTitle: obsTexto?.title || '',
+            obsDisplay: obsTexto?.style.display || 'none',
+        };
+    }
+
+    function restaurarEstadoFila(rowId, estado) {
+        const fila = document.getElementById(rowId);
+        const badge = document.getElementById(`badge-${rowId}`);
+        const obsTexto = document.getElementById(`obs-texto-${rowId}`);
+        if (fila) {
+            fila.classList.remove('fila-verificada', 'fila-observada');
+            if (estado.clase) fila.classList.add(estado.clase);
+            fila.setAttribute('data-obs', estado.obs);
+        }
+        if (badge) {
+            badge.style.cssText = estado.badgeStyle;
+            badge.textContent = estado.badgeText;
+        }
+        if (obsTexto) {
+            obsTexto.textContent = estado.obsTexto;
+            obsTexto.title = estado.obsTitle;
+            obsTexto.style.display = estado.obsDisplay;
+        }
+        actualizarContadores();
+        guardarEstadoLocal();
+    }
+
     async function marcarCorrecto(rowId, activoId = null) {
+        if (!requiereVerificacionIniciada()) return;
         if (procesandoActivos.has(rowId)) return;
         procesandoActivos.add(rowId);
 
+        const estadoAnterior = capturarEstadoFila(rowId);
         const fila = document.getElementById(rowId);
         const badge = document.getElementById(`badge-${rowId}`);
         const obsTexto = document.getElementById(`obs-texto-${rowId}`);
@@ -831,22 +1115,27 @@
             if (obsTexto) {
                 obsTexto.style.display = 'none';
                 obsTexto.textContent = '';
+                obsTexto.title = '';
             }
             actualizarContadores();
             guardarEstadoLocal();
         }
 
         if (activoId && AMBIENTE_ID) {
-            await guardarVerificacion(activoId, AMBIENTE_ID, true, '');
+            const guardado = await guardarVerificacion(activoId, AMBIENTE_ID, true, '');
+            if (!guardado) {
+                restaurarEstadoFila(rowId, estadoAnterior);
+            }
         }
         setTimeout(() => procesandoActivos.delete(rowId), 1000);
     }
 
     function abrirModalObservacion(rowId, codigo, activoId = null, estadoActual = '') {
+        if (!requiereVerificacionIniciada()) return;
         const fila = document.getElementById(rowId);
         document.getElementById('obs-row-id').value = rowId;
         document.getElementById('obs-activo-id').value = activoId || '';
-        document.getElementById('obs-modal-sub').textContent = `📦 Activo: ${codigo}`;
+        document.getElementById('obs-modal-sub').textContent = `?? Activo: ${codigo}`;
         document.getElementById('obs-detalle').value = fila ? (fila.getAttribute('data-obs') || '') : '';
         document.getElementById('obs-estado-fisico').value = estadoActual || '';
         document.getElementById('obs-solicitar-baja').checked = false;
@@ -867,7 +1156,7 @@
         const solicitarBaja = document.getElementById('obs-solicitar-baja').checked;
 
         if (!detalle) {
-            mostrarNotificacion('Ingresa el motivo de la observación.', 'error');
+            mostrarNotificacion('Ingresa el motivo de la observaci?n.', 'error');
             document.getElementById('obs-detalle').focus();
             return;
         }
@@ -875,6 +1164,7 @@
         if (procesandoActivos.has(rowId)) return;
         procesandoActivos.add(rowId);
 
+        const estadoAnterior = capturarEstadoFila(rowId);
         const fila = document.getElementById(rowId);
         const badge = document.getElementById(`badge-${rowId}`);
         const obsTexto = document.getElementById(`obs-texto-${rowId}`);
@@ -888,10 +1178,10 @@
             fila.setAttribute('data-obs', obsCompleta);
 
             badge.style.cssText = 'display: inline-block; padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 10px; background: #fef9c3; color: #854d0e; border: 1px solid #fde047;';
-            badge.textContent = 'Con Observación';
+            badge.textContent = 'Con Observaci?n';
 
             if (obsTexto) {
-                obsTexto.textContent = '⚠ ' + obsCompleta;
+                obsTexto.textContent = '? ' + obsCompleta;
                 obsTexto.style.display = 'block';
                 obsTexto.title = obsCompleta;
             }
@@ -902,7 +1192,10 @@
         }
 
         if (activoId && AMBIENTE_ID) {
-            await guardarVerificacion(activoId, AMBIENTE_ID, false, detalle, estadoFisico, solicitarBaja);
+            const guardado = await guardarVerificacion(activoId, AMBIENTE_ID, false, detalle, estadoFisico, solicitarBaja);
+            if (!guardado) {
+                restaurarEstadoFila(rowId, estadoAnterior);
+            }
         }
         setTimeout(() => procesandoActivos.delete(rowId), 1000);
     }
@@ -943,7 +1236,20 @@
         });
     }
 
+
+    function requiereVerificacionIniciada() {
+        if (localStorage.getItem(storageKeyEstado) === 'finalizado') {
+            mostrarNotificacion('La verificación ya fue finalizada. Usa "Volver a iniciar" si necesitas continuar.', 'warning');
+            return false;
+        }
+        if (!estaCorriendo && localStorage.getItem(storageKeyEstado) !== 'activo') {
+            mostrarNotificacion('Primero presiona el boton "Iniciar Verificación" para comenzar.', 'warning');
+            return false;
+        }
+        return true;
+    }
     function openScannerModal() {
+        if (!requiereVerificacionIniciada()) return;
         isProcessingScan = false;
         precargarAudios();
         toggleModal('scanner-modal', true);
@@ -1010,7 +1316,7 @@
                 return;
             }
 
-            if (!aplicarActivoEscaneado(json)) return;
+            if (!await aplicarActivoEscaneado(json)) return;
 
             const activo = json.activo;
 
@@ -1024,7 +1330,7 @@
                 }
                 mostrarNotificacion(`✅ Activo ${activo.codigo_activo} validado correctamente.`, 'success');
             } else {
-                mostrarNotificacion(`⚠️ El activo ${activo.codigo_activo} fue reconocido, pero no pertenece a la categoría filtrada actual.`, 'warning');
+                mostrarNotificacion(`⚠️ El activo ${activo.codigo_activo} no forma parte del inventario activo de este ambiente.`, 'warning');
             }
 
         } catch (err) {
@@ -1035,7 +1341,7 @@
                 : null;
 
             if (local) {
-                const corresponde = aplicarActivoEscaneado({
+                const corresponde = await aplicarActivoEscaneado({
                     success: true,
                     es_del_ambiente: String(local.id_ambiente) === String(AMBIENTE_ID),
                     activo: local,
@@ -1054,7 +1360,7 @@
                     }
                     mostrarNotificacion(`📡 Sin conexión: ${local.codigo_activo} se verificó localmente y se enviará luego.`, 'warning');
                 } else {
-                    mostrarNotificacion(`⚠️ ${local.codigo_activo} fue reconocido, pero no está en la categoría filtrada.`, 'warning');
+                    mostrarNotificacion(`⚠️ ${local.codigo_activo} no forma parte del inventario activo de este ambiente.`, 'warning');
                 }
 
                 return;
@@ -1064,12 +1370,19 @@
         }
     }
 
-    function aplicarActivoEscaneado(json) {
+    async function aplicarActivoEscaneado(json) {
         const activo = json.activo;
 
         if (AMBIENTE_ID && json.es_del_ambiente === false) {
             audioUbicacion.play().catch(() => {});
-            mostrarNotificacion('⚠️ El activo existe pero pertenece a otro ambiente.', 'warning');
+            const observacion = `Encontrado en ${AMBIENTE_NOMBRE}; registrado en ${activo.ambiente || 'otro ambiente'}.`;
+            const guardado = await guardarVerificacion(activo.id, AMBIENTE_ID, false, observacion);
+            mostrarNotificacion(
+                guardado
+                    ? `⚠️ Se registró que ${activo.codigo_activo} fue encontrado en ${AMBIENTE_NOMBRE}.`
+                    : `⚠️ ${activo.codigo_activo} pertenece a otro ambiente; no se pudo guardar la observación.`,
+                guardado ? 'warning' : 'error'
+            );
             return false;
         }
 
@@ -1115,6 +1428,7 @@
         if (localStorage.getItem(storageKeyEstado) === 'finalizado') {
             const btn = document.getElementById('btn-toggle-timer');
             const btnFin = document.getElementById('btn-finalizar-verificacion');
+            const btnReabrir = document.getElementById('btn-reabrir-verificacion');
             if (btn) {
                 btn.disabled = true;
                 btn.style.opacity = '0.5';
@@ -1125,6 +1439,7 @@
                 btnFin.style.opacity = '0.5';
                 btnFin.innerHTML = '✅ Finalizada';
             }
+            if (btnReabrir) btnReabrir.style.display = 'inline-flex';
         }
 
         actualizarContadores();

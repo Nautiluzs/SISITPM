@@ -36,7 +36,7 @@ class ActaTransferenciaController extends Controller
         if (! $user->esAdmin()) {
             $query->where(function ($q) use ($user) {
                 $q->where('id_custodio_anterior', $user->id_usuario)
-                  ->orWhere('id_custodio_nuevo', $user->id_usuario);
+                    ->orWhere('id_custodio_nuevo', $user->id_usuario);
             });
         }
 
@@ -54,10 +54,10 @@ class ActaTransferenciaController extends Controller
 
         return view('actas.transferencia.index', [
             'transferencias' => $transferencias,
-            'activos'        => ActivoFijo::paraUsuario($user)->where('estado_registro', '!=', 'BAJA')->get(),
-            'ambientes'      => $ambientesVisibles,
-            'usuarios'       => User::where('estado', 'ACTIVO')->orderBy('nombre_completo')->get(),
-            'pendientes'     => ActaTransferencia::pendientes()->count(),
+            'activos' => ActivoFijo::paraUsuario($user)->where('estado_registro', '!=', 'BAJA')->get(),
+            'ambientes' => $ambientesVisibles,
+            'usuarios' => User::where('estado', 'ACTIVO')->orderBy('nombre_completo')->get(),
+            'pendientes' => ActaTransferencia::pendientes()->count(),
         ]);
     }
 
@@ -91,7 +91,7 @@ class ActaTransferenciaController extends Controller
             $bus = $request->q;
             $queryActivos->where(function ($s) use ($bus) {
                 $s->where('codigo_activo', 'like', "%{$bus}%")
-                  ->orWhere('nombre', 'like', "%{$bus}%");
+                    ->orWhere('nombre', 'like', "%{$bus}%");
             });
         }
 
@@ -118,13 +118,13 @@ class ActaTransferenciaController extends Controller
         $categoriasDisponibles = Categoria::with('ambiente.carrera')->orderBy('nombre')->get();
 
         // Preselecciones desde query string (?id_activo=X&id_ambiente_destino=Y&id_categoria=Z)
-        $idActivoPreselected   = $request->input('id_activo');
+        $idActivoPreselected = $request->input('id_activo');
         $idAmbientePreselected = $request->input('id_ambiente_destino');
         $idCategoriaPreselected = $request->input('id_categoria');
 
         // Obtener usuarios activos (nuevos custodios)
         $custodiosQuery = User::where('estado', 'ACTIVO')
-            ->with(['items' => fn($q) => $q->whereNull('item_usuario.fecha_fin')])
+            ->with(['items' => fn ($q) => $q->whereNull('item_usuario.fecha_fin')])
             ->orderBy('nombre_completo');
 
         // Si se preseleccionó un ambiente destino, filtrar solo custodios de ese ambiente
@@ -133,19 +133,25 @@ class ActaTransferenciaController extends Controller
                 $q->whereHas('activosCustodiados', function ($sub) use ($idAmbientePreselected) {
                     $sub->where('id_ambiente', $idAmbientePreselected);
                 })
-                ->orWhereHas('itemsVigentes', function ($sub) use ($idAmbientePreselected) {
-                    $sub->where('items.id_ambiente', $idAmbientePreselected);
-                })
-                ->orWhereExists(function ($sub) use ($idAmbientePreselected) {
-                    $sub->select(DB::raw(1))
-                        ->from('ambiente_user')
-                        ->whereColumn('ambiente_user.id_usuario', 'usuarios.id_usuario')
-                        ->where('ambiente_user.id_ambiente', $idAmbientePreselected);
-                });
+                    ->orWhereHas('itemsVigentes', function ($sub) use ($idAmbientePreselected) {
+                        $sub->where('items.id_ambiente', $idAmbientePreselected);
+                    })
+                    ->orWhereExists(function ($sub) use ($idAmbientePreselected) {
+                        $sub->select(DB::raw(1))
+                            ->from('ambiente_user')
+                            ->whereColumn('ambiente_user.id_usuario', 'usuarios.id_usuario')
+                            ->where('ambiente_user.id_ambiente', $idAmbientePreselected);
+                    });
             });
         }
 
         $usuarios = $custodiosQuery->get();
+        if ($usuarios->isEmpty() && $idAmbientePreselected) {
+            $usuarios = User::where('estado', 'ACTIVO')
+                ->with(['items' => fn ($q) => $q->whereNull('item_usuario.fecha_fin')])
+                ->orderBy('nombre_completo')
+                ->get();
+        }
 
         return view('actas.transferencia.create', compact(
             'activosDisponibles',
@@ -173,32 +179,43 @@ class ActaTransferenciaController extends Controller
             'user_id' => $request->user()?->id_usuario,
         ]);
 
-        $custodios = User::where('estado', 'ACTIVO')
-            ->with(['items' => fn($q) => $q->whereNull('item_usuario.fecha_fin')])
+        $usuarios = User::where('estado', 'ACTIVO')
+            ->with(['items' => fn ($q) => $q->whereNull('item_usuario.fecha_fin')])
             ->where(function ($q) use ($idAmbiente) {
                 // Usuarios que tienen activos custodiados en este ambiente
                 $q->whereHas('activosCustodiados', function ($sub) use ($idAmbiente) {
                     $sub->where('id_ambiente', $idAmbiente);
                 })
                 // O usuarios con ítems vigentes en este ambiente
-                ->orWhereHas('itemsVigentes', function ($sub) use ($idAmbiente) {
-                    $sub->where('items.id_ambiente', $idAmbiente);
-                })
+                    ->orWhereHas('itemsVigentes', function ($sub) use ($idAmbiente) {
+                        $sub->where('items.id_ambiente', $idAmbiente);
+                    })
                 // O usuarios asignados directamente en la tabla pivot ambiente_user (botón "Asignar" de carreras)
-                ->orWhereExists(function ($sub) use ($idAmbiente) {
-                    $sub->select(DB::raw(1))
-                        ->from('ambiente_user')
-                        ->whereColumn('ambiente_user.id_usuario', 'usuarios.id_usuario')
-                        ->where('ambiente_user.id_ambiente', $idAmbiente);
-                });
+                    ->orWhereExists(function ($sub) use ($idAmbiente) {
+                        $sub->select(DB::raw(1))
+                            ->from('ambiente_user')
+                            ->whereColumn('ambiente_user.id_usuario', 'usuarios.id_usuario')
+                            ->where('ambiente_user.id_ambiente', $idAmbiente);
+                    });
             })
             ->orderBy('nombre_completo')
-            ->get()
+            ->get();
+
+        $fallback = $usuarios->isEmpty();
+        if ($fallback) {
+            $usuarios = User::where('estado', 'ACTIVO')
+                ->with(['items' => fn ($q) => $q->whereNull('item_usuario.fecha_fin')])
+                ->orderBy('nombre_completo')
+                ->get();
+        }
+
+        $custodios = $usuarios
             ->map(function ($usr) {
                 $itemActivo = $usr->items->first();
-                $nroItem = $itemActivo ? 'Ítem #' . $itemActivo->numero_item : 'Sin ítem';
+                $nroItem = $itemActivo ? 'Ítem #'.$itemActivo->numero_item : 'Sin ítem';
                 $textoMostrar = "{$usr->nombre_completo} (C.I.: {$usr->ci} · {$nroItem})";
-                $textoBusqueda = strtolower($usr->nombre_completo . ' ' . $usr->ci . ' ' . ($itemActivo?->numero_item ?? ''));
+                $textoBusqueda = strtolower($usr->nombre_completo.' '.$usr->ci.' '.($itemActivo?->numero_item ?? ''));
+
                 return [
                     'id' => $usr->id_usuario,
                     'texto' => $textoMostrar,
@@ -210,11 +227,16 @@ class ActaTransferenciaController extends Controller
         Log::info('Custodios encontrados para ambiente', [
             'idAmbiente' => $idAmbiente,
             'count' => $custodios->count(),
+            'fallback' => $fallback,
         ]);
 
-        return response()->json($custodios);
+        return response()->json([
+            'custodios' => $custodios,
+            'fallback' => $fallback,
+        ]);
     }
-// ============================================================
+
+    // ============================================================
     // STORE — Registrar la transferencia (uno o varios activos)
     // ============================================================
     public function store(Request $request)
@@ -226,19 +248,20 @@ class ActaTransferenciaController extends Controller
         }
 
         $data = $request->validate([
-            'id_activos'           => 'required|array|min:1',
-            'id_activos.*'         => 'required|exists:activos_fijos,id_activo',
+            'id_activos' => 'required|array|min:1',
+            'id_activos.*' => 'required|exists:activos_fijos,id_activo',
             'id_ambiente_destino' => 'required|exists:ambientes,id_ambiente',
-            'id_categoria'        => 'nullable|exists:categorias,id_categoria',
-            'id_custodio'         => 'required|exists:usuarios,id_usuario',
-            'observaciones'       => 'nullable|string|max:500',
-            'fecha_transferencia' => 'required|date',
+            'id_categoria' => 'nullable|exists:categorias,id_categoria',
+            'id_custodio' => 'required|exists:usuarios,id_usuario',
+            'observaciones' => 'nullable|string|max:500',
+            'fecha_transferencia' => 'required|date|before_or_equal:today',
         ], [
-            'id_activos.required'           => 'Debe seleccionar al menos un activo.',
-            'id_activos.array'              => 'La selección de activos no es válida.',
+            'id_activos.required' => 'Debe seleccionar al menos un activo.',
+            'id_activos.array' => 'La selección de activos no es válida.',
             'id_ambiente_destino.required' => 'Debe seleccionar el ambiente destino.',
-            'id_custodio.required'         => 'Debe seleccionar el nuevo custodio.',
+            'id_custodio.required' => 'Debe seleccionar el nuevo custodio.',
             'fecha_transferencia.required' => 'La fecha de transferencia es obligatoria.',
+            'fecha_transferencia.before_or_equal' => 'La fecha de transferencia no puede ser futura.',
         ]);
 
         $idsActivos = array_unique(array_map('intval', $data['id_activos']));
@@ -269,7 +292,7 @@ class ActaTransferenciaController extends Controller
 
         $activoPrimero = $activos->first();
 
-        $numero = 'TRANS-' . now()->format('Y') . '-' . str_pad(
+        $numero = 'TRANS-'.now()->format('Y').'-'.str_pad(
             (string) ((ActaTransferencia::max('id_acta_transferencia') ?? 0) + 1),
             4, '0', STR_PAD_LEFT
         );
@@ -278,18 +301,18 @@ class ActaTransferenciaController extends Controller
 
         $acta = DB::transaction(function () use ($data, $activos, $activoPrimero, $user, $numero, $esAdmin) {
             $acta = ActaTransferencia::create([
-                'numero_acta'          => $numero,
-                'id_activo'            => $activoPrimero->id_activo,
-                'id_origen_ambiente'   => $activoPrimero->id_ambiente,
-                'id_destino_ambiente'  => $data['id_ambiente_destino'],
+                'numero_acta' => $numero,
+                'id_activo' => $activoPrimero->id_activo,
+                'id_origen_ambiente' => $activoPrimero->id_ambiente,
+                'id_destino_ambiente' => $data['id_ambiente_destino'],
                 'id_custodio_anterior' => $activoPrimero->id_custodio ?? $user->id_usuario,
-                'id_custodio_nuevo'    => $data['id_custodio'],
-                'fecha_transferencia'  => $data['fecha_transferencia'],
-                'observaciones'        => $data['observaciones'] ?? null,
-                'estado'               => $esAdmin ? ActaTransferencia::ESTADO_APROBADA : ActaTransferencia::ESTADO_PENDIENTE,
-                'id_aprobador'         => $esAdmin ? $user->id_usuario : null,
-                'fecha_aprobacion'     => $esAdmin ? now() : null,
-                'estado_anterior'      => $activoPrimero->estado_registro,
+                'id_custodio_nuevo' => $data['id_custodio'],
+                'fecha_transferencia' => $data['fecha_transferencia'],
+                'observaciones' => $data['observaciones'] ?? null,
+                'estado' => $esAdmin ? ActaTransferencia::ESTADO_APROBADA : ActaTransferencia::ESTADO_PENDIENTE,
+                'id_aprobador' => $esAdmin ? $user->id_usuario : null,
+                'fecha_aprobacion' => $esAdmin ? now() : null,
+                'estado_anterior' => $activoPrimero->estado_registro,
             ]);
 
             // Insertar cada activo en la tabla pivote
@@ -304,17 +327,15 @@ class ActaTransferenciaController extends Controller
                 } else {
                     // ⭐ Localizar una categoría existente en el ambiente destino que coincida en nombre,
                     // o tomar la primera categoría válida del nuevo ambiente de destino.
-                    $categoriaDestino = Categoria::where('id_ambiente', $data['id_ambiente_destino'])
-                        ->where('nombre', $activoPrimero->categoria->nombre ?? '')
+                    $categoriaDestino = Categoria::where('nombre', $activoPrimero->categoria->nombre ?? '')
                         ->first()
-                        ?? Categoria::where('id_ambiente', $data['id_ambiente_destino'])->first();
+                        ?? Categoria::query()->orderBy('id_categoria')->first();
 
                     // Si el ambiente destino no tiene ninguna categoría creada todavía, creamos una por defecto
                     if (! $categoriaDestino) {
                         $categoriaDestino = Categoria::create([
                             'id_ambiente' => $data['id_ambiente_destino'],
-                            'codigo'      => 'CAT-' . rand(100, 999),
-                            'nombre'      => 'General - ' . ($activoPrimero->categoria->nombre ?? 'Activos'),
+                            'nombre' => 'General - '.($activoPrimero->categoria->nombre ?? 'Activos'),
                         ]);
                     }
                 }
@@ -322,9 +343,9 @@ class ActaTransferenciaController extends Controller
                 // ⭐ Traslado completo e inmediato de todos los activos
                 foreach ($activos as $activo) {
                     $activo->update([
-                        'id_ambiente'     => $data['id_ambiente_destino'],
-                        'id_categoria'    => $categoriaDestino->id_categoria,
-                        'id_custodio'     => $data['id_custodio'],
+                        'id_ambiente' => $data['id_ambiente_destino'],
+                        'id_categoria' => $categoriaDestino->id_categoria,
+                        'id_custodio' => $data['id_custodio'],
                         'estado_registro' => 'ASIGNADO',
                     ]);
                 }
@@ -347,6 +368,7 @@ class ActaTransferenciaController extends Controller
             ->route('actas.transferencia.show', $acta)
             ->with('status', $mensaje);
     }
+
     // ============================================================
     // APROBAR — Solo administración. Aquí sí se mueve el bien.
     // ============================================================
@@ -360,16 +382,16 @@ class ActaTransferenciaController extends Controller
 
         DB::transaction(function () use ($acta, $data, $request) {
             $acta->update([
-                'estado'              => ActaTransferencia::ESTADO_APROBADA,
-                'id_aprobador'        => $request->user()->id_usuario,
-                'fecha_aprobacion'    => now(),
+                'estado' => ActaTransferencia::ESTADO_APROBADA,
+                'id_aprobador' => $request->user()->id_usuario,
+                'fecha_aprobacion' => now(),
                 'comentario_aprobacion' => $data['comentario'] ?? null,
             ]);
 
             foreach ($acta->activos as $activo) {
                 $activo->update([
-                    'id_ambiente'     => $acta->id_destino_ambiente,
-                    'id_custodio'     => $acta->id_custodio_nuevo,
+                    'id_ambiente' => $acta->id_destino_ambiente,
+                    'id_custodio' => $acta->id_custodio_nuevo,
                     'estado_registro' => 'ASIGNADO',
                 ]);
             }
@@ -391,9 +413,9 @@ class ActaTransferenciaController extends Controller
 
         DB::transaction(function () use ($acta, $data, $request) {
             $acta->update([
-                'estado'              => ActaTransferencia::ESTADO_RECHAZADA,
-                'id_aprobador'        => $request->user()->id_usuario,
-                'fecha_aprobacion'    => now(),
+                'estado' => ActaTransferencia::ESTADO_RECHAZADA,
+                'id_aprobador' => $request->user()->id_usuario,
+                'fecha_aprobacion' => now(),
                 'comentario_aprobacion' => $data['comentario'] ?? 'Rechazado por la administración.',
             ]);
 
@@ -451,7 +473,8 @@ class ActaTransferenciaController extends Controller
         ]);
 
         $pdf = PdfHelper::oficio('actas.transferencia.pdf', compact('acta'), 'landscape');
-        return $pdf->stream('Acta_Transferencia_' . $acta->numero_acta . '.pdf');
+
+        return $pdf->stream('Acta_Transferencia_'.$acta->numero_acta.'.pdf');
     }
 
     // ============================================================
@@ -473,6 +496,7 @@ class ActaTransferenciaController extends Controller
 
         return response()->view('actas.transferencia.excel', compact('acta'));
     }
+
     protected function authorizeActa(ActaTransferencia $acta): void
     {
         $user = Auth::user();

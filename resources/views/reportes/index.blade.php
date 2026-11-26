@@ -13,7 +13,7 @@
             <p style="opacity: 0.9; font-size: 14px; margin: 0;">Genera, visualiza y exporta inventarios generales, por ambiente, carrera, categoría y actas oficiales.</p>
         </div>
         <div>
-            <a href="{{ route('reportes.pdf') }}" target="_blank"
+            <a href="{{ route('reportes.pdf') }}" target="_blank" data-refresh-history
                style="background: white; color: #1e40af; padding: 12px 20px; border-radius: 12px; font-weight: 800; font-size: 13px; text-decoration: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: inline-flex; align-items: center; gap: 8px;">
                 <span>📊</span> Inventario General PDF
             </a>
@@ -52,7 +52,7 @@
             </div>
             <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">Selecciona primero la carrera y luego el ambiente para exportar su reporte.</p>
 
-            <form method="GET" action="{{ route('reportes.pdf') }}" target="_blank" style="display: flex; flex-direction: column; gap: 12px;">
+            <form method="GET" action="{{ route('reportes.pdf') }}" target="_blank" data-refresh-history style="display: flex; flex-direction: column; gap: 12px;">
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                     <label style="font-size: 12px; font-weight: 700; color: #334155;">Carrera</label>
                     <select name="id_carrera" id="filtro-carrera-reporte" style="width: 100%; padding: 10px 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 13px; color: #1e293b; outline: none;" onchange="filtrarAmbientesPorCarrera(this.value)">
@@ -100,7 +100,7 @@
             </div>
             <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">Selecciona carrera, ambiente, categoría y tipo de bien para exportar su reporte.</p>
 
-            <form method="GET" action="{{ route('reportes.pdf') }}" target="_blank" style="display: flex; flex-direction: column; gap: 12px;">
+            <form method="GET" action="{{ route('reportes.pdf') }}" target="_blank" data-refresh-history style="display: flex; flex-direction: column; gap: 12px;">
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                     <label style="font-size: 12px; font-weight: 700; color: #334155;">Carrera</label>
                     <select name="id_carrera" id="filtro-carrera-cat" style="width: 100%; padding: 10px 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 13px; color: #1e293b; outline: none;" onchange="filtrarAmbientesPorCarreraCat(this.value)">
@@ -174,7 +174,7 @@
                 <a href="{{ route('activos.index') }}" style="flex: 1; padding: 10px; background: #2563eb; color: white; border-radius: 10px; font-size: 12px; font-weight: 700; text-decoration: none; text-align: center;">
                     Ver Activos
                 </a>
-                <a href="{{ route('reportes.pdf') }}" target="_blank" style="flex: 1; padding: 10px; background: #ef4444; color: white; border-radius: 10px; font-size: 12px; font-weight: 700; text-decoration: none; text-align: center;">
+                <a href="{{ route('reportes.pdf') }}" target="_blank" data-refresh-history style="flex: 1; padding: 10px; background: #ef4444; color: white; border-radius: 10px; font-size: 12px; font-weight: 700; text-decoration: none; text-align: center;">
                     PDF General
                 </a>
             </div>
@@ -232,7 +232,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" style="padding: 20px; text-align: center; color: #64748b;">No hay descargas para los filtros seleccionados.</td>
+                            <td colspan="6" style="padding: 20px; text-align: center; color: #64748b;">No hay descargas para los filtros seleccionados. Las exportaciones nuevas aparecerán aquí al actualizarse esta página.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -241,6 +241,13 @@
     </section>
 
     <script>
+        document.querySelectorAll('[data-refresh-history]').forEach(element => {
+            const eventName = element.tagName === 'FORM' ? 'submit' : 'click';
+            element.addEventListener(eventName, () => {
+                window.setTimeout(() => window.location.reload(), 1800);
+            });
+        });
+
         function filtrarAmbientesPorCarrera(idCarrera) {
             const selectAmbiente = document.getElementById('filtro-ambiente-reporte');
             const opciones = selectAmbiente.querySelectorAll('option');

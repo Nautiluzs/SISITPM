@@ -42,7 +42,7 @@ class ActivoCodigoAntiguoTest extends TestCase
         $response = $this->actingAs($context['admin'])
             ->post(route('activos.store'), $this->validAssetPayload($context, 'ACT-TEST-001'));
 
-        $response->assertRedirect(route('categorias.show', $context['categoria']->id_categoria));
+        $response->assertRedirect(route('ambientes.show', $context['ambiente']->id_ambiente));
 
         $activo = ActivoFijo::where('codigo_activo', 'ACT-TEST-001')->firstOrFail();
 
@@ -62,7 +62,7 @@ class ActivoCodigoAntiguoTest extends TestCase
 
         $this->actingAs($context['admin'])
             ->post(route('activos.store'), $payload)
-            ->assertRedirect(route('categorias.show', $context['categoria']->id_categoria));
+            ->assertRedirect(route('ambientes.show', $context['ambiente']->id_ambiente));
 
         $activo = ActivoFijo::where('codigo_activo', 'ACT-TEST-002')->firstOrFail();
 
@@ -98,7 +98,6 @@ class ActivoCodigoAntiguoTest extends TestCase
         ]);
 
         $categoria = Categoria::create([
-            'codigo' => 'EQP',
             'nombre' => 'Equipos de prueba',
             'id_ambiente' => $ambiente->id_ambiente,
         ]);

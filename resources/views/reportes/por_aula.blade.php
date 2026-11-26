@@ -19,11 +19,11 @@
                 <p style="opacity: 0.85; font-size: 13px; margin: 0;">{{ optional($ambiente->carrera)->nombre ?? 'Sin carrera asociada' }}</p>
             </div>
             <div style="display: flex; gap: 10px;">
-                <a href="{{ route('reportes.aula.pdf', $ambiente->id_ambiente) }}" target="_blank"
+                <a href="{{ route('reportes.aula.pdf', array_merge(['id_ambiente' => $ambiente->id_ambiente], request()->query())) }}" target="_blank"
                    style="background: #dc2626; color: white; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);">
                     📄 PDF
                 </a>
-                <a href="{{ route('reportes.aula.excel', $ambiente->id_ambiente) }}"
+                <a href="{{ route('reportes.aula.excel', array_merge(['id_ambiente' => $ambiente->id_ambiente], request()->query())) }}"
                    style="background: #059669; color: white; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);">
                     📊 Excel
                 </a>

@@ -2,18 +2,16 @@
 
 namespace App\Http\Controllers\Web;
 
-use App\Http\Controllers\AprobacionVerificacionController;
 use App\Http\Controllers\Controller;
 use App\Models\ActivoFijo;
 use App\Models\Ambiente;
 use App\Models\Carrera;
-use App\Models\Categoria;
 use App\Models\User;
 use App\Models\VerificacionFisica;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class VerificacionController extends Controller
@@ -38,16 +36,8 @@ class VerificacionController extends Controller
                 ->get();
         }
 
-        $categorias = collect();
-        if ($request->filled('ambiente_id')) {
-            $categorias = Categoria::where('id_ambiente', $request->ambiente_id)
-                ->orderBy('nombre', 'asc')
-                ->get();
-        }
-
         $activos = collect();
         $ambienteSeleccionado = null;
-        $categoriaSeleccionada = null;
 
         if ($request->filled('ambiente_id')) {
             $ambienteSeleccionado = $user->ambientesVisibles()->with('carrera')->find($request->ambiente_id);
@@ -63,19 +53,15 @@ class VerificacionController extends Controller
                 'ambiente.carrera',
                 'custodio',
                 'fuente',
-                'verificaciones' => function ($q) {
-                    $q->latest('fecha_verificacion');
+                'verificaciones' => function ($query) use ($ambienteSeleccionado) {
+                    $query->where('id_ambiente_escaneo', $ambienteSeleccionado->id_ambiente)
+                        ->where('estado_aprobacion', VerificacionFisica::ESTADO_PENDIENTE)
+                        ->where('verificacion_finalizada', false)
+                        ->latest('id_verificacion');
                 },
             ])
                 ->paraUsuario($user)
                 ->where('id_ambiente', $ambienteSeleccionado->id_ambiente);
-
-            if ($request->filled('categoria_id')) {
-                $categoriaSeleccionada = Categoria::find($request->categoria_id);
-                if ($categoriaSeleccionada) {
-                    $query->where('id_categoria', $categoriaSeleccionada->id_categoria);
-                }
-            }
 
             $activos = $query->orderBy('codigo_activo', 'asc')->get();
         }
@@ -83,10 +69,8 @@ class VerificacionController extends Controller
         return view('verificaciones.index', compact(
             'carreras',
             'ambientes',
-            'categorias',
             'activos',
             'ambienteSeleccionado',
-            'categoriaSeleccionada',
             'puedeVerificar'
         ));
     }
@@ -117,7 +101,14 @@ class VerificacionController extends Controller
             'sustituto_fecha' => 'nullable|date',
         ]);
 
-        $activo = ActivoFijo::findOrFail($data['activo_id']);
+        if (! $user->ambientesVisibles()->whereKey($data['ambiente_escaneo_id'])->exists()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Ese ambiente no le corresponde.',
+            ], 403);
+        }
+
+        $activo = ActivoFijo::with('ambiente')->findOrFail($data['activo_id']);
 
         // El activo debe estar dentro del alcance de quien verifica.
         $permitidos = ActivoFijo::select('id_activo')->paraUsuario($user)->pluck('id_activo');
@@ -131,6 +122,12 @@ class VerificacionController extends Controller
         $esCorrecto = ($activo->id_ambiente == $data['ambiente_escaneo_id']);
 
         $observaciones = $data['observaciones'] ?? null;
+        if (! $esCorrecto && blank($observaciones)) {
+            $ambienteEscaneo = Ambiente::findOrFail($data['ambiente_escaneo_id']);
+            $observaciones = 'Activo registrado en '.($activo->ambiente?->nombre ?? 'un ambiente distinto')
+                .' y encontrado en '.$ambienteEscaneo->nombre.'.';
+        }
+
         if ($request->boolean('solicitar_baja')) {
             $observaciones = ($observaciones ? $observaciones."\n" : '').'[Solicitar baja del activo]';
         }
@@ -179,10 +176,12 @@ class VerificacionController extends Controller
         // administración y el historial.
         $anterior = VerificacionFisica::where('id_activo', $activo->id_activo)
             ->where('id_ambiente_escaneo', $data['ambiente_escaneo_id'])
-            ->whereNotIn('estado_aprobacion', [
-                VerificacionFisica::ESTADO_PENDIENTE,
-                VerificacionFisica::ESTADO_RECHAZADA,
-            ])
+            ->where(function ($query) {
+                $query->whereNotIn('estado_aprobacion', [
+                    VerificacionFisica::ESTADO_PENDIENTE,
+                    VerificacionFisica::ESTADO_RECHAZADA,
+                ])->orWhere('verificacion_finalizada', true);
+            })
             ->latest('id_verificacion')
             ->first();
 
@@ -194,7 +193,7 @@ class VerificacionController extends Controller
 
             return response()->json([
                 'success' => true,
-                'mensaje' => 'Verificación guardada. La anterior ya estaba aprobada, así que se conservó.',
+                'mensaje' => 'Verificación guardada. La anterior ya estaba finalizada o aprobada, así que se conservó.',
                 'verificacion' => $verificacion,
             ]);
         }
@@ -216,7 +215,11 @@ class VerificacionController extends Controller
 
     public function exportarPdf(Request $request)
     {
-        $ambiente = Ambiente::with('carrera')->findOrFail($request->ambiente_id);
+        /** @var User $user */
+        $user = Auth::user();
+        $ambiente = $user->ambientesVisibles()
+            ->with('carrera')
+            ->findOrFail($request->ambiente_id);
         $verificadosData = json_decode($request->verificados, true) ?? [];
 
         if (empty($verificadosData)) {
@@ -225,6 +228,8 @@ class VerificacionController extends Controller
 
         $ids = array_column($verificadosData, 'id_activo');
         $activos = ActivoFijo::with(['categoria', 'ambiente.carrera', 'custodio', 'fuente'])
+            ->paraUsuario($user)
+            ->where('id_ambiente', $ambiente->id_ambiente)
             ->whereIn('id_activo', $ids)
             ->get();
 
@@ -251,7 +256,11 @@ class VerificacionController extends Controller
 
     public function exportarExcel(Request $request)
     {
-        $ambiente = Ambiente::with('carrera')->findOrFail($request->ambiente_id);
+        /** @var User $user */
+        $user = Auth::user();
+        $ambiente = $user->ambientesVisibles()
+            ->with('carrera')
+            ->findOrFail($request->ambiente_id);
         $verificadosData = json_decode($request->verificados, true) ?? [];
 
         if (empty($verificadosData)) {
@@ -260,6 +269,8 @@ class VerificacionController extends Controller
 
         $ids = array_column($verificadosData, 'id_activo');
         $activos = ActivoFijo::with(['categoria', 'ambiente.carrera', 'custodio', 'fuente'])
+            ->paraUsuario($user)
+            ->where('id_ambiente', $ambiente->id_ambiente)
             ->whereIn('id_activo', $ids)
             ->get();
 
@@ -284,7 +295,124 @@ class VerificacionController extends Controller
 
     public function finalizar(Request $request)
     {
-        $request->validate([
+        $data = $request->validate([
+            'ambiente_id' => 'required|exists:ambientes,id_ambiente',
+            'tiempo_transcurrido' => 'nullable|string|max:32',
+            'faltantes' => 'sometimes|array',
+            'faltantes.*' => 'required|array:id_activo,ubicacion',
+            'faltantes.*.id_activo' => 'required|integer|distinct|exists:activos_fijos,id_activo',
+            'faltantes.*.ubicacion' => 'required|string|min:2|max:500',
+        ], [
+            'faltantes.*.ubicacion.required' => 'Indica la ubicación actual o última ubicación conocida de cada activo faltante.',
+        ]);
+
+        /** @var User|null $user */
+        $user = Auth::user();
+        if (! $user?->puedeFinalizarVerificacion()) {
+            return response()->json(['success' => false, 'error' => 'No autorizado'], 403);
+        }
+
+        $ambiente = $user->ambientesVisibles()->find($data['ambiente_id']);
+
+        if (! $ambiente) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Ese ambiente no le corresponde.',
+            ], 403);
+        }
+
+        $activos = ActivoFijo::query()
+            ->paraUsuario($user)
+            ->where('id_ambiente', $ambiente->id_ambiente)
+            ->orderBy('codigo_activo')
+            ->get(['id_activo', 'codigo_activo', 'nombre', 'estado_fisico']);
+
+        $verificacionesActuales = VerificacionFisica::query()
+            ->where('id_ambiente_escaneo', $ambiente->id_ambiente)
+            ->whereIn('id_activo', $activos->modelKeys())
+            ->where('estado_aprobacion', VerificacionFisica::ESTADO_PENDIENTE)
+            ->where('verificacion_finalizada', false)
+            ->latest('id_verificacion')
+            ->get()
+            ->unique('id_activo')
+            ->keyBy('id_activo');
+
+        $idsFaltantes = $activos
+            ->whereNotIn('id_activo', $verificacionesActuales->keys()->all())
+            ->pluck('id_activo')
+            ->map(fn ($id) => (int) $id)
+            ->sort()
+            ->values();
+        $faltantesEnviados = collect($data['faltantes'] ?? []);
+        $idsFaltantesEnviados = $faltantesEnviados
+            ->pluck('id_activo')
+            ->map(fn ($id) => (int) $id)
+            ->sort()
+            ->values();
+
+        if ($idsFaltantes->all() !== $idsFaltantesEnviados->all()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Verifica todos los activos del ambiente e indica la ubicación de cada activo no localizado.',
+                'faltantes' => $activos
+                    ->whereIn('id_activo', $idsFaltantes->all())
+                    ->map(fn ($activo) => [
+                        'id_activo' => $activo->id_activo,
+                        'codigo_activo' => $activo->codigo_activo,
+                        'nombre' => $activo->nombre,
+                        'ambiente_esperado' => $ambiente->nombre,
+                    ])
+                    ->values(),
+            ], 422);
+        }
+
+        $ubicacionesFaltantes = $faltantesEnviados->keyBy('id_activo');
+        $totalActivos = $activos->count();
+        $totalVerificados = $verificacionesActuales->filter(
+            fn ($verificacion) => $verificacion->es_correspondencia_correcta && blank($verificacion->observaciones)
+        )->count();
+        $totalNoLocalizados = $idsFaltantes->count();
+        $totalObservados = max($totalActivos - $totalVerificados - $totalNoLocalizados, 0);
+
+        DB::transaction(function () use ($activos, $ambiente, $idsFaltantes, $ubicacionesFaltantes, $user, $request) {
+            foreach ($activos->whereIn('id_activo', $idsFaltantes->all()) as $activo) {
+                $ubicacion = trim($ubicacionesFaltantes->get($activo->id_activo)['ubicacion']);
+
+                VerificacionFisica::create([
+                    'id_activo' => $activo->id_activo,
+                    'id_ambiente_escaneo' => $ambiente->id_ambiente,
+                    'id_verificador' => $user->id_usuario,
+                    'fecha_verificacion' => now(),
+                    'es_correspondencia_correcta' => false,
+                    'sincronizado_offline' => false,
+                    'dispositivo_uuid' => substr((string) $request->header('User-Agent'), 0, 50),
+                    'estado_fisico_reportado' => $activo->estado_fisico,
+                    'observaciones' => 'No localizado en el ambiente esperado ('.$ambiente->nombre.'). Ubicación reportada: '.$ubicacion,
+                    'estado_aprobacion' => VerificacionFisica::ESTADO_PENDIENTE,
+                    'verificacion_finalizada' => false,
+                ]);
+            }
+
+            VerificacionFisica::where('id_ambiente_escaneo', $ambiente->id_ambiente)
+                ->where('estado_aprobacion', VerificacionFisica::ESTADO_PENDIENTE)
+                ->where('verificacion_finalizada', false)
+                ->update(['verificacion_finalizada' => true]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'mensaje' => 'Verificación finalizada y enviada a aprobación. No se envió ningún correo.',
+            'total_activos' => $totalActivos,
+            'total_verificados' => $totalVerificados,
+            'total_observados' => $totalObservados,
+            'total_no_localizados' => $totalNoLocalizados,
+            'tiempo_transcurrido' => $data['tiempo_transcurrido'] ?? 'No registrado',
+        ]);
+    }
+
+    public function reabrir(Request $request)
+    {
+        $data = $request->validate([
             'ambiente_id' => 'required|exists:ambientes,id_ambiente',
         ]);
 
@@ -294,67 +422,19 @@ class VerificacionController extends Controller
             return response()->json(['success' => false, 'error' => 'No autorizado'], 403);
         }
 
-        $ambiente = $user->ambientesVisibles()->find($request->ambiente_id);
-
+        $ambiente = $user->ambientesVisibles()->find($data['ambiente_id']);
         if (! $ambiente) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Ese ambiente no le corresponde.',
-            ], 403);
+            return response()->json(['success' => false, 'error' => 'Ese ambiente no le corresponde.'], 403);
         }
 
-        // ⭐ CORREGIDO: Usando 'id_ambiente_escaneo'
-        $totalVerificados = VerificacionFisica::where('id_ambiente_escaneo', $request->ambiente_id)
+        $eliminadas = VerificacionFisica::where('id_ambiente_escaneo', $ambiente->id_ambiente)
             ->where('estado_aprobacion', VerificacionFisica::ESTADO_PENDIENTE)
-            ->where('es_correspondencia_correcta', true)
-            ->where(function ($q) {
-                $q->whereNull('observaciones')->orWhere('observaciones', '');
-            })
-            ->count();
-
-        $totalObservados = VerificacionFisica::where('id_ambiente_escaneo', $request->ambiente_id)
-            ->where('estado_aprobacion', VerificacionFisica::ESTADO_PENDIENTE)
-            ->where(function ($q) {
-                $q->whereNotNull('observaciones')->where('observaciones', '!=', '');
-            })
-            ->count();
-
-        VerificacionFisica::where('id_ambiente_escaneo', $request->ambiente_id)
-            ->where('estado_aprobacion', VerificacionFisica::ESTADO_PENDIENTE)
-            ->update(['verificacion_finalizada' => true]);
-
-        try {
-            app(AprobacionVerificacionController::class)
-                ->notificarFinalizacion(new Request([
-                    'ambiente_id' => $request->ambiente_id,
-                    'verificador_id' => $user->id_usuario,
-                    'total_verificados' => $totalVerificados,
-                    'total_observados' => $totalObservados,
-                    'tiempo_transcurrido' => $request->input('tiempo_transcurrido', 'No registrado'),
-                ]));
-        } catch (\Throwable $e) {
-            Log::warning('No se pudo notificar: '.$e->getMessage());
-        }
+            ->delete();
 
         return response()->json([
             'success' => true,
-            'mensaje' => 'Verificación finalizada y notificada al administrador.',
-        ]);
-    }
-
-    public function categoriasPorAmbiente(Request $request)
-    {
-        $request->validate([
-            'ambiente_id' => 'required|exists:ambientes,id_ambiente',
-        ]);
-
-        $categorias = Categoria::where('id_ambiente', $request->ambiente_id)
-            ->orderBy('nombre')
-            ->get(['id_categoria', 'codigo', 'nombre']);
-
-        return response()->json([
-            'success' => true,
-            'categorias' => $categorias,
+            'mensaje' => 'La verificaci?n se reinici? desde cero. Puedes comenzar nuevamente.',
+            'reiniciadas' => $eliminadas,
         ]);
     }
 }

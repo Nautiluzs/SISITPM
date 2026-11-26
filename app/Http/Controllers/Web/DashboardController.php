@@ -3,19 +3,20 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActaBaja;
+use App\Models\ActaTransferencia;
 use App\Models\ActivoFijo;
-use App\Models\Ambiente;
 use App\Models\Carrera;
 use App\Models\User;
+use App\Models\VerificacionFisica;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         // Todo el tablero se construye sobre el alcance del usuario: un
@@ -26,14 +27,14 @@ class DashboardController extends Controller
         // ============================================================
         // 1. TOTALES GENERALES
         // ============================================================
-        $totalActivos    = $activos()->count();
-        $activosBuenos   = $activos()->where('estado_fisico', 'B')->count();
-        $enReparacion    = $activos()->where('estado_fisico', 'R')->count();
+        $totalActivos = $activos()->count();
+        $activosBuenos = $activos()->where('estado_fisico', 'B')->count();
+        $enReparacion = $activos()->where('estado_fisico', 'R')->count();
         $enMantenimiento = $activos()->where('estado_fisico', 'M')->count();
-        $fueraServicio   = $activos()->where('estado_fisico', 'FF')->count();
+        $fueraServicio = $activos()->where('estado_fisico', 'FF')->count();
 
         $totalAmbientes = $user->ambientesVisibles()->count();
-        $totalCarreras  = Carrera::when(
+        $totalCarreras = Carrera::when(
             $user->idsCarrerasVisibles() === null,
             fn ($q) => $q,
             fn ($q) => $q->whereIn('id_carrera', $user->idsCarrerasVisibles())
@@ -60,6 +61,14 @@ class DashboardController extends Controller
                 ->whereMonth('created_at', $fecha->month)
                 ->count();
         }
+
+        $maxRegistrosMensual = max($activosPorMes);
+        $mesesConMasRegistros = $maxRegistrosMensual > 0
+            ? array_map(
+                fn ($indice) => $meses[$indice],
+                array_keys($activosPorMes, $maxRegistrosMensual, true)
+            )
+            : [];
 
         // ============================================================
         // 3. DATOS PARA GRÁFICA DE DONA (estados)
@@ -109,9 +118,9 @@ class DashboardController extends Controller
 
         // Lo que la administradora tiene pendiente de decidir.
         $pendientes = $user->esAdmin() ? [
-            'verificaciones' => \App\Models\VerificacionFisica::pendientesAprobacion()->count(),
-            'bajas'          => \App\Models\ActaBaja::pendientes()->count(),
-            'transferencias' => \App\Models\ActaTransferencia::pendientes()->count(),
+            'verificaciones' => VerificacionFisica::pendientesAprobacion()->count(),
+            'bajas' => ActaBaja::pendientes()->count(),
+            'transferencias' => ActaTransferencia::pendientes()->count(),
         ] : null;
 
         return view('welcome', compact(
@@ -125,6 +134,8 @@ class DashboardController extends Controller
             'totalUsuarios',
             'meses',
             'activosPorMes',
+            'maxRegistrosMensual',
+            'mesesConMasRegistros',
             'estadosData',
             'ultimosActivos',
             'activosPorCarrera',

@@ -36,16 +36,12 @@
             <td>MURILLO</td>
         </tr>
         <tr>
-            <td class="label">CÓDIGO CAT.:</td>
-            <td>{{ $categoria->codigo }}</td>
+            <td class="label">ID CATEGORÍA:</td>
+            <td>{{ $categoria->id_categoria }}</td>
             <td class="label">AMBIENTE:</td>
             <td>{{ $categoria->ambiente->nombre ?? '—' }}</td>
             <td class="label">CIUDAD:</td>
             <td>EL ALTO</td>
-        </tr>
-        <tr>
-            <td class="label">DESCRIPCIÓN:</td>
-            <td colspan="5">{{ $categoria->descripcion ?? '—' }}</td>
         </tr>
     </table>
 

@@ -297,11 +297,11 @@ class DatabaseSeeder extends BaseSeeder
             $itemsPorUsuario[$fila->id_usuario] = $items;
         }
 
-             // ============================================================
+        // ============================================================
         // 4. AMBIENTES - BLOQUE 1 (Módulo 1)
         // ============================================================
         $ambientes = [
-            
+
             // ==========================================
             // PLANTA BAJA (PISO 0)
             // ==========================================
@@ -321,7 +321,7 @@ class DatabaseSeeder extends BaseSeeder
             // --- INDUSTRIAS DE ALIMENTOS (INA) ---
             ['codigo' => 'INA-A03', 'nombre' => 'Aula 3 INA',                       'bloque' => '1', 'piso' => 0, 'carrera' => 'INA'],
             ['codigo' => 'INA-ABR', 'nombre' => 'Laboratorio Química ABR',          'bloque' => '1', 'piso' => 0, 'carrera' => 'INA'],
-            ['codigo' => 'INA-BRO', 'nombre' => 'Laboratorio Química y Bromatología','bloque' => '1', 'piso' => 0, 'carrera' => 'INA'],
+            ['codigo' => 'INA-BRO', 'nombre' => 'Laboratorio Química y Bromatología', 'bloque' => '1', 'piso' => 0, 'carrera' => 'INA'],
             ['codigo' => 'INA-TAL', 'nombre' => 'Taller INA',                       'bloque' => '1', 'piso' => 0, 'carrera' => 'INA'],
             ['codigo' => 'INA-REP', 'nombre' => 'Taller Repostería INA',            'bloque' => '1', 'piso' => 0, 'carrera' => 'INA'],
             ['codigo' => 'INA-D01', 'nombre' => 'Depósito INA 1',                   'bloque' => '1', 'piso' => 0, 'carrera' => 'INA'],
@@ -340,7 +340,6 @@ class DatabaseSeeder extends BaseSeeder
             // --- SISTEMAS INFORMÁTICOS (SIF) ---
             ['codigo' => 'SIF-HAR', 'nombre' => 'Laboratorio 3 Hardware y Redes',   'bloque' => '1', 'piso' => 0, 'carrera' => 'SIF'],
 
-
             // ==========================================
             // PRIMER PISO (PISO 1)
             // ==========================================
@@ -355,11 +354,11 @@ class DatabaseSeeder extends BaseSeeder
             ['codigo' => 'ACA-01',  'nombre' => 'Académica',                        'bloque' => '1', 'piso' => 1, 'carrera' => 'ADM'],
             ['codigo' => 'CON-01',  'nombre' => 'Control',                          'bloque' => '1', 'piso' => 1, 'carrera' => 'ADM'],
             ['codigo' => 'ALM-01',  'nombre' => 'Almacén',                          'bloque' => '1', 'piso' => 1, 'carrera' => 'ADM'],
-
+            ['codigo' => 'RAT-RAD', 'nombre' => 'Radio',                            'bloque' => '1', 'piso' => 1, 'carrera' => 'ADM'],
             // --- SISTEMAS INFORMÁTICOS (SIF) ---
             ['codigo' => 'SIF-HR2', 'nombre' => 'Laboratorio Hardware SIF',         'bloque' => '1', 'piso' => 1, 'carrera' => 'SIF'],
             ['codigo' => 'SIF-A12', 'nombre' => 'Aula 12 SIF',                      'bloque' => '1', 'piso' => 1, 'carrera' => 'SIF'],
-            ['codigo' => 'SIF-RAD', 'nombre' => 'Radio',                            'bloque' => '1', 'piso' => 1, 'carrera' => 'SIF'],
+
             ['codigo' => 'SIF-L01', 'nombre' => 'Laboratorio 1 SIF',                'bloque' => '1', 'piso' => 1, 'carrera' => 'SIF'],
             ['codigo' => 'SIF-JEF', 'nombre' => 'Jefatura de Carrera SIF',          'bloque' => '1', 'piso' => 1, 'carrera' => 'SIF'],
             ['codigo' => 'SIF-DL1', 'nombre' => 'Depósito Laboratorio 1 SIF',       'bloque' => '1', 'piso' => 1, 'carrera' => 'SIF'],
@@ -381,14 +380,14 @@ class DatabaseSeeder extends BaseSeeder
             ['codigo' => 'MEI-JEF', 'nombre' => 'Jefatura Mecánica Industrial',     'bloque' => '1', 'piso' => 1, 'carrera' => 'MEI'],
             ['codigo' => 'MEI-DEP', 'nombre' => 'Depósito Mecánica Industrial',     'bloque' => '1', 'piso' => 1, 'carrera' => 'MEI'],
             ['codigo' => 'MEI-DIB', 'nombre' => 'Dibujo Técnico MEI',               'bloque' => '1', 'piso' => 1, 'carrera' => 'MEI'],
-            ['codigo' => 'MEI-DDIB','nombre' => 'Depósito Dibujo Técnico MEI',      'bloque' => '1', 'piso' => 1, 'carrera' => 'MEI'],
+            ['codigo' => 'MEI-DDIB', 'nombre' => 'Depósito Dibujo Técnico MEI',      'bloque' => '1', 'piso' => 1, 'carrera' => 'MEI'],
             ['codigo' => 'MEI-DIR', 'nombre' => 'Dir. Técnica MEI 30',              'bloque' => '1', 'piso' => 1, 'carrera' => 'MEI'],
 
             // --- INDUSTRIAS DE ALIMENTOS (INA) ---
             ['codigo' => 'INA-JEF', 'nombre' => 'Jefatura INA',                     'bloque' => '1', 'piso' => 1, 'carrera' => 'INA'],
             ['codigo' => 'INA-LAB', 'nombre' => 'Laboratorio INA',                  'bloque' => '1', 'piso' => 1, 'carrera' => 'INA'],
             ['codigo' => 'INA-MI1', 'nombre' => 'Depósito Microbiología INA',       'bloque' => '1', 'piso' => 1, 'carrera' => 'INA'],
-            ['codigo' => 'INA-MI2', 'nombre' => 'Depósito Microbiología INA 2',     'bloque' => '1', 'piso' => 1, 'carrera' => 'INA']
+            ['codigo' => 'INA-MI2', 'nombre' => 'Depósito Microbiología INA 2',     'bloque' => '1', 'piso' => 1, 'carrera' => 'INA'],
         ];
 
         foreach ($ambientes as $ambiente) {
@@ -409,17 +408,43 @@ class DatabaseSeeder extends BaseSeeder
         }
 
         // ============================================================
-        // 5. CATEGORÍAS
+        // 5. CATEGORÍAS DE ACTIVOS
         // ============================================================
         $categorias = [
-            ['codigo' => 'EQP-INF',  'nombre' => 'Equipos Informáticos',  'descripcion' => 'Equipos de cómputo y accesorios'],
-            ['codigo' => 'EQP-ELC',  'nombre' => 'Equipos Electrónicos',  'descripcion' => 'Equipos electrónicos y componentes'],
-            ['codigo' => 'MOB-URB',  'nombre' => 'Mobiliario',            'descripcion' => 'Mobiliario y enseres'],
-            ['codigo' => 'MAT-CONS', 'nombre' => 'Material de Consumo',   'descripcion' => 'Escobas, papeleras, engrampadoras'],
+            'EDIFICACIONES',
+            'MUEBLES Y ENSERES DE OFICINA',
+            'MAQUINARIA EN GENERAL',
+            'EQUIPO MEDICO Y DE LABORATORIO',
+            'EQUIPO DE COMUNICACIONES',
+            'EQUIPO EDUCACIONAL Y RECREATIVO',
+            'BARCOS Y LANCHAS EN GENERAL',
+            'VEHICULOS AUTOMOTORES',
+            'AVIONES',
+            'MAQUINARIA PARA LA CONSTRUCCION',
+            'MAQUINARIA AGRICOLA',
+            'ANIMALES DE TRABAJO',
+            'HERRAMIENTAS EN GENERAL',
+            'REPRODUCTORES Y HEMBRAS DE PEDIGREE',
+            'EQUIPOS DE COMPUTACION',
+            'CANALES DE REGADIO Y POZOS',
+            'ESTANQUES, BAÑADEROS Y ABREVADEROS',
+            'ALAMBRADOS, TRANQUERAS Y VALLAS',
+            'VIVIENDAS PARA EL PERSONAL',
+            'MUEBLES Y ENSERES EN VIVIENDAS DE PERSONAL',
+            'SILOS, ALMACENES Y GALPONES',
+            'TINGLADOS Y COBERTIZOS DE MADERA',
+            'TINGLADOS Y COBERTIZOS DE METAL',
+            'INSTALACION DE ELECTRIFICACION Y TELEFONIA',
+            'CAMINOS INTERIORES',
+            'CAÑA DE AZUCAR',
+            'Otros Items de inventarios',
         ];
 
-        foreach ($categorias as $categoria) {
-            Categoria::updateOrCreate(['codigo' => $categoria['codigo']], $categoria);
+        foreach ($categorias as $nombreCategoria) {
+            Categoria::updateOrCreate(
+                ['nombre' => $nombreCategoria],
+                ['id_ambiente' => null]
+            );
         }
 
         // ============================================================

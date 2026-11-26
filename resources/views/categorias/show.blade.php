@@ -391,12 +391,12 @@
                     </div>
 
                     <div>
-                        <label class="af-label">Categoría (Ambiente) <span class="af-asterisco visible">*</span></label>
+                        <label class="af-label">Categoría <span class="af-asterisco visible">*</span></label>
                         <select name="id_categoria" id="crear-id-categoria" class="af-input">
                             <option value="">— Seleccionar categoría —</option>
-                            @foreach (\App\Models\Categoria::where('id_ambiente', $ambiente->id_ambiente ?? 0)->orderBy('nombre')->get() as $cat)
+                            @foreach ($categorias as $cat)
                                 <option value="{{ $cat->id_categoria }}" {{ (isset($categoria) && $categoria->id_categoria == $cat->id_categoria) ? 'selected' : '' }}>
-                                    [{{ $cat->codigo }}] {{ $cat->nombre }}
+                                    ID {{ $cat->id_categoria }} - {{ $cat->nombre }}
                                 </option>
                             @endforeach
                         </select>
@@ -608,11 +608,11 @@
                     </div>
 
                     <div>
-                        <label class="af-label">Categoría (Ambiente) *</label>
+                        <label class="af-label">Categoría *</label>
                         <select name="id_categoria" id="edit-id-categoria" class="af-input">
                             <option value="">— Seleccionar categoría —</option>
-                            @foreach (\App\Models\Categoria::where('id_ambiente', $ambiente->id_ambiente ?? 0)->orderBy('nombre')->get() as $cat)
-                                <option value="{{ $cat->id_categoria }}">[{{ $cat->codigo }}] {{ $cat->nombre }}</option>
+                            @foreach ($categorias as $cat)
+                                <option value="{{ $cat->id_categoria }}">ID {{ $cat->id_categoria }} - {{ $cat->nombre }}</option>
                             @endforeach
                         </select>
                         <div class="af-error" data-for="edit-id-categoria"></div>

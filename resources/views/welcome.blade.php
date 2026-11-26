@@ -224,15 +224,6 @@
             </div>
         </div>
     </div>
-
-    @if(auth()->check() && auth()->user()->esAdmin())
-        <div style="display:flex; justify-content:flex-end; margin-bottom: 20px;">
-            <a href="{{ route('carreras.create') }}" class="sis-btn-primary">
-                ➕ Nueva Carrera
-            </a>
-        </div>
-    @endif
-
     {{-- ============================================================ --}}
     {{-- ACCESOS RÁPIDOS Y RESUMEN ACADÉMICO --}}
     {{-- ============================================================ --}}
@@ -295,10 +286,16 @@
         <div class="sis-card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px;">
                 <div>
-                    <h2 class="sis-card-title">Flujo Mensual de Activos</h2>
-                    <p class="sis-card-sub">Comparativa mensual de altas (nuevos) y bajas registradas</p>
+                    <h2 class="sis-card-title">Activos registrados por mes</h2>
+                    <p class="sis-card-sub">Cantidad de activos registrados durante los últimos 12 meses.</p>
                 </div>
-                <span class="sis-chip">Gestión {{ date('Y') }}</span>
+                <span class="sis-chip">
+                    @if($maxRegistrosMensual > 0)
+                        Más registros: {{ implode(', ', $mesesConMasRegistros) }} ({{ $maxRegistrosMensual }})
+                    @else
+                        Sin registros en los últimos 12 meses
+                    @endif
+                </span>
             </div>
             <div style="position: relative; height: 260px; width: 100%;">
                 <canvas id="graficaActivosMensual"></canvas>
@@ -360,53 +357,30 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        const ctx = document.getElementById('graficaActivosMensual').getContext('2d');
+        const canvas = document.getElementById('graficaActivosMensual');
+        if (!canvas) return;
 
-        // Gradiente vertical azul para relleno de "Altas"
-        const gradAltas = ctx.createLinearGradient(0, 0, 0, 260);
-        gradAltas.addColorStop(0, 'rgba(37, 99, 235, 0.28)');
-        gradAltas.addColorStop(1, 'rgba(37, 99, 235, 0)');
+        const ctx = canvas.getContext('2d');
+        const registros = @json($activosPorMes);
+        const maxRegistros = Math.max(...registros);
 
         new Chart(ctx, {
-            type: 'line',
+            type: 'bar',
             data: {
-                labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+                labels: @json($meses),
                 datasets: [
                     {
-                        label: 'Activos Nuevos (Altas)',
-                        data: [2, 4, 3, 5, 7, 6, 8, 4, 6, 9, 5, 7],
-                        borderColor: '#2563eb',
-                        backgroundColor: gradAltas,
-                        borderWidth: 3,
-                        pointBackgroundColor: '#2563eb',
-                        pointBorderColor: '#ffffff',
-                        pointBorderWidth: 2,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
-                        fill: true,
-                        tension: 0.35
-                    },
-                    {
-                        label: 'Activos de Baja',
-                        data: [0, 1, 0, 2, 1, 0, 1, 2, 0, 1, 0, 1],
-                        borderColor: '#dc2626',
-                        backgroundColor: 'rgba(220, 38, 38, 0.05)',
-                        borderWidth: 2,
-                        pointBackgroundColor: '#dc2626',
-                        pointBorderColor: '#ffffff',
-                        pointBorderWidth: 2,
-                        pointRadius: 3,
-                        pointHoverRadius: 5,
-                        borderDash: [5, 5],
-                        fill: false,
-                        tension: 0.35
+                        label: 'Activos registrados',
+                        data: registros,
+                        backgroundColor: registros.map(total => total === maxRegistros && total > 0 ? '#dc2626' : '#2563eb'),
+                        borderRadius: 6,
+                        maxBarThickness: 38
                     }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: { intersect: false, mode: 'index' },
                 plugins: {
                     legend: {
                         position: 'bottom',
@@ -432,7 +406,7 @@
                     y: {
                         beginAtZero: true,
                         grid: { color: '#f1f5f9' },
-                        ticks: { font: { size: 11 }, color: '#64748b' }
+                        ticks: { precision: 0, font: { size: 11 }, color: '#64748b' }
                     },
                     x: {
                         grid: { display: false },

@@ -91,8 +91,8 @@ class LiberacionController extends Controller
         abort_unless($this->puedeLiberar($user, $ambiente), 403, 'No custodian bienes de este ambiente.');
 
         $custodios = $this->custodiosDe($ambiente);
-        $receptor   = $this->receptorDe($ambiente);
-        $tipo       = $this->tipoSolicitado($request);
+        $receptor = $this->receptorDe($ambiente);
+        $tipo = $this->tipoSolicitado($request);
 
         $activos = ActivoFijo::where('id_ambiente', $ambiente->id_ambiente)
             ->with(['categoria', 'fuente', 'custodio'])
@@ -151,7 +151,7 @@ class LiberacionController extends Controller
 
     private function puedeLiberar(User $user, Ambiente $ambiente): bool
     {
-        if ($user->esAdmin() || $user->esInventariador()) {
+        if ($user->esAdmin() || $user->esInventariador() || $user->esRector()) {
             return true;
         }
 

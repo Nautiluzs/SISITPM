@@ -296,7 +296,12 @@
             <table>
                 <tr>
                     <td>
-                        <b>Observaciones :</b> ASIGNACION PROVISIONAL DE ACTIVOS FIJOS (EQUIPAMIENTO 2025) HASTA REGULARIZACION DE RESOLUCION DEPARTAMENTAL DE DONACION.
+                        <b>Observaciones :</b>
+                        @if(trim($observaciones ?? '') !== '')
+                            {!! nl2br(e($observaciones)) !!}
+                        @else
+                            Sin observaciones
+                        @endif
                     </td>
                 </tr>
                 <tr>

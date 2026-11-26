@@ -7,17 +7,21 @@ use App\Models\ActivoFijo;
 use App\Models\Ambiente;
 use App\Models\Carrera;
 use App\Models\Categoria;
+use App\Models\FuenteFinanciamiento;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -37,11 +41,7 @@ class ImportarActivosController extends Controller
     {
         $this->authorizeActivoModification();
 
-        return view('activos.importar', [
-            'carreras' => Carrera::orderBy('id_carrera')->get(['id_carrera', 'nombre']),
-            'ambientes' => Ambiente::with('carrera')->orderBy('id_ambiente')->get(['id_ambiente', 'id_carrera', 'nombre']),
-            'categorias' => Categoria::with('ambiente')->orderBy('id_categoria')->get(['id_categoria', 'id_ambiente', 'nombre']),
-        ]);
+        return view('activos.importar');
     }
 
     public function template()
@@ -51,10 +51,25 @@ class ImportarActivosController extends Controller
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Plantilla Activos');
-        $headers = ['codigo_activo', 'tipo_bien', 'nombre', 'descripcion', 'marca', 'modelo', 'numero_serie', 'id_ambiente', 'id_categoria', 'id_fuente', 'id_custodio', 'estado_fisico', 'rv', 'fecha_adquisicion', 'valor_adquisicion'];
+
+        $headers = [
+            'codigo_activo', 'tipo_bien', 'nombre', 'descripcion', 'marca', 'modelo',
+            'numero_serie', 'id_ambiente', 'id_categoria', 'id_fuente', 'ci_custodio',
+            'estado_fisico', 'rv', 'fecha_adquisicion', 'valor_adquisicion',
+        ];
         $sheet->fromArray($headers, null, 'A1');
-        $sheet->fromArray(['TPM-2026-0045', 'ACTIVO_FIJO', 'ESCRITORIO METALICO', 'Escritorio ejecutivo para dirección', 'IMPORT', 'Standard 3 cajones', 'S/S', 3, 7, 1, 1, 'B', 'NO', '2026-01-05', 1200], null, 'A2');
         $sheet->getStyle('A1:O1')->getFont()->setBold(true);
+
+        $validacionEstado = new DataValidation;
+        $validacionEstado->setType(DataValidation::TYPE_LIST);
+        $validacionEstado->setErrorStyle(DataValidation::STYLE_STOP);
+        $validacionEstado->setAllowBlank(false);
+        $validacionEstado->setShowInputMessage(true);
+        $validacionEstado->setShowErrorMessage(true);
+        $validacionEstado->setError('Seleccione B, R, M o FF.');
+        $validacionEstado->setFormula1('"B,R,M,FF"');
+        $sheet->setDataValidation('L2:L1000', $validacionEstado);
+
         $validacionRv = new DataValidation;
         $validacionRv->setType(DataValidation::TYPE_LIST);
         $validacionRv->setErrorStyle(DataValidation::STYLE_STOP);
@@ -64,9 +79,12 @@ class ImportarActivosController extends Controller
         $validacionRv->setError('Seleccione SI o NO.');
         $validacionRv->setFormula1('"SI,NO"');
         $sheet->setDataValidation('M2:M1000', $validacionRv);
+
         foreach (range('A', 'O') as $columna) {
             $sheet->getColumnDimension($columna)->setAutoSize(true);
         }
+
+        $this->agregarHojaManual($spreadsheet);
 
         $writer = new Xlsx($spreadsheet);
 
@@ -75,6 +93,213 @@ class ImportarActivosController extends Controller
         }, 'plantilla_de_activos.xlsx', [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ]);
+    }
+
+    private function agregarHojaManual(Spreadsheet $spreadsheet): void
+    {
+        $manual = $spreadsheet->createSheet();
+        $manual->setTitle('Manual e IDs');
+
+        // Título principal
+        $manual->mergeCells('A1:G1');
+        $manual->setCellValue('A1', 'MANUAL DE IMPORTACIÓN DE ACTIVOS');
+        $manual->getStyle('A1:G1')->getFont()->setBold(true)->setSize(16)->getColor()->setRGB('FFFFFF');
+        $manual->getStyle('A1:G1')->getFill()->setFillType('solid')->getStartColor()->setRGB('1D4ED8');
+
+        // PASOS + VALORES PERMITIDOS
+        $manual->setCellValue('A3', 'PASO');
+        $manual->setCellValue('B3', 'INSTRUCCIONES');
+        $manual->setCellValue('D3', 'VALORES PERMITIDOS');
+        $manual->getStyle('A3:B3')->getFont()->setBold(true);
+        $manual->getStyle('D3')->getFont()->setBold(true);
+
+        $manual->fromArray([
+            [1, 'Complete los datos únicamente en la hoja "Plantilla Activos". Esta segunda hoja es solo de consulta.'],
+            [2, 'Use una fila por activo y conserve los nombres de las columnas de la fila 1. No elimine ni renombre encabezados.'],
+            [3, 'Copie id_ambiente, id_categoria e id_fuente de las tablas de referencia de esta hoja. Las categorías son compartidas por todas las carreras.'],
+            [4, 'En ci_custodio escriba el C.I. tal como aparece en la lista. No escriba el id_usuario.'],
+            [5, 'Complete estado_fisico con B, R, M o FF. La hoja de plantilla ofrece una lista desplegable.'],
+            [6, 'Guarde el archivo como .xlsx y cárguelo en el formulario de importación. La importación procesa la primera hoja.'],
+        ], null, 'A4');
+
+        // Valores permitidos (D-E)
+        $manual->setCellValue('D4', 'FUNCIONAMIENTO');
+        $manual->setCellValue('E4', 'CÓDIGO');
+        $manual->getStyle('D4:E4')->getFont()->setBold(true);
+
+        $manual->fromArray([
+            ['Bueno', 'B'],
+            ['Regular', 'R'],
+            ['Malo', 'M'],
+            ['Fuera de funcionamiento', 'FF'],
+        ], null, 'D5');
+
+        $manual->setCellValue('D9', 'tipo_bien');
+        $manual->setCellValue('E9', 'ACTIVO_FIJO o NO_ACTIVO');
+        $manual->setCellValue('D10', 'rv');
+        $manual->setCellValue('E10', 'SI o NO');
+        $manual->setCellValue('D11', 'ci_custodio');
+        $manual->setCellValue('E11', 'C.I. del usuario responsable');
+        $manual->getStyle('D9:D11')->getFont()->setBold(true);
+
+        // Ambientes y custodios agrupados por carrera
+        $fila = 13;
+        $manual->mergeCells("A{$fila}:G{$fila}");
+        $manual->setCellValue("A{$fila}", 'AMBIENTES Y CUSTODIOS AGRUPADOS POR CARRERA');
+        $manual->getStyle("A{$fila}:G{$fila}")->getFont()->setBold(true);
+        $fila += 2;
+
+        $carreras = Carrera::query()->orderBy('id_carrera')->get(['id_carrera', 'codigo', 'nombre']);
+        $ambientesPorCarrera = Ambiente::query()
+            ->orderBy('id_ambiente')
+            ->get(['id_ambiente', 'codigo', 'nombre', 'id_carrera'])
+            ->groupBy('id_carrera');
+        $custodiosPorCarrera = User::query()
+            ->where('estado', 'ACTIVO')
+            ->whereIn('rol', [User::ROL_CUSTODIO, User::ROL_JEFE_CARRERA])
+            ->orderBy('nombre_completo')
+            ->get(['ci', 'nombre_completo', 'rol', 'estado', 'id_carrera'])
+            ->groupBy('id_carrera');
+
+        $coloresCarreras = ['DBEAFE', 'DCFCE7', 'FEF3C7', 'FCE7F3', 'EDE9FE', 'FFEDD5'];
+        foreach ($carreras as $indiceCarrera => $carrera) {
+            $fila = $this->escribirBloqueCarrera(
+                $manual,
+                $fila,
+                "Carrera {$carrera->id_carrera} - {$carrera->nombre}",
+                $ambientesPorCarrera->get($carrera->id_carrera, collect()),
+                $custodiosPorCarrera->get($carrera->id_carrera, collect()),
+                $coloresCarreras[$indiceCarrera % count($coloresCarreras)]
+            );
+        }
+
+        // Usuarios sin carrera
+        $custodiosSinCarrera = $custodiosPorCarrera->get(null, collect());
+        if ($custodiosSinCarrera->isNotEmpty()) {
+            $fila = $this->escribirBloqueCarrera(
+                $manual,
+                $fila,
+                'Usuarios sin carrera asignada',
+                collect(),
+                $custodiosSinCarrera,
+                'E2E8F0'
+            );
+        }
+
+        // Categorías compartidas
+        $fila++;
+        $manual->mergeCells("A{$fila}:B{$fila}");
+        $manual->setCellValue("A{$fila}", 'CATEGORÍAS COMPARTIDAS (VÁLIDAS PARA TODAS LAS CARRERAS)');
+        $manual->getStyle("A{$fila}:B{$fila}")->getFont()->setBold(true);
+        $fila++;
+
+        $manual->setCellValue("A{$fila}", 'ID CATEGORÍA');
+        $manual->setCellValue("B{$fila}", 'CATEGORÍA');
+        $manual->getStyle("A{$fila}:B{$fila}")->getFont()->setBold(true);
+
+        $categorias = Categoria::query()->orderBy('id_categoria')->get(['id_categoria', 'nombre']);
+        foreach ($categorias as $categoria) {
+            $fila++;
+            $manual->setCellValue("A{$fila}", $categoria->id_categoria);
+            $manual->setCellValue("B{$fila}", $categoria->nombre);
+        }
+
+        // Fuentes de financiamiento
+        $fila += 2;
+        $manual->mergeCells("A{$fila}:C{$fila}");
+        $manual->setCellValue("A{$fila}", 'FUENTES DE FINANCIAMIENTO');
+        $manual->getStyle("A{$fila}:C{$fila}")->getFont()->setBold(true);
+        $fila++;
+
+        $manual->setCellValue("A{$fila}", 'ID FUENTE');
+        $manual->setCellValue("B{$fila}", 'CÓDIGO');
+        $manual->setCellValue("C{$fila}", 'FUENTE DE FINANCIAMIENTO');
+        $manual->getStyle("A{$fila}:C{$fila}")->getFont()->setBold(true);
+
+        // Consulta el codigo real de la base de datos (GD, GM, GN, etc.)
+        $fuentes = FuenteFinanciamiento::query()->orderBy('id_fuente')->get(['id_fuente', 'codigo', 'nombre']);
+        foreach ($fuentes as $fuente) {
+            $fila++;
+            $manual->setCellValue("A{$fila}", $fuente->id_fuente);
+            $manual->setCellValueExplicit("B{$fila}", (string) $fuente->codigo, DataType::TYPE_STRING);
+            $manual->setCellValue("C{$fila}", $fuente->nombre);
+        }
+
+        // Formato final
+        $manual->getStyle("A1:G{$fila}")->getAlignment()->setWrapText(true);
+        $manual->getStyle("A1:G{$fila}")->getAlignment()->setVertical('top');
+        $manual->freezePane('A4');
+
+        $manual->getColumnDimension('A')->setWidth(14);
+        $manual->getColumnDimension('B')->setWidth(34);
+        $manual->getColumnDimension('C')->setWidth(30);
+        $manual->getColumnDimension('D')->setWidth(20);
+        $manual->getColumnDimension('E')->setWidth(29);
+        $manual->getColumnDimension('F')->setWidth(19);
+        $manual->getColumnDimension('G')->setWidth(12);
+    }
+
+    /**
+     * Escribe un bloque de carrera con ambientes (A-C) y custodios (D-G)
+     * alineados fila por fila, tal como en el Excel de referencia.
+     */
+    private function escribirBloqueCarrera(
+        Worksheet $hoja,
+        int $fila,
+        string $titulo,
+        Collection $ambientes,
+        Collection $custodios,
+        string $colorFondo = 'DBEAFE'
+    ): int {
+        $hoja->mergeCells("A{$fila}:G{$fila}");
+        $hoja->setCellValue("A{$fila}", $titulo);
+        $hoja->getStyle("A{$fila}:G{$fila}")->getFont()->setBold(true);
+        $hoja->getStyle("A{$fila}:G{$fila}")->getFont()->getColor()->setRGB('1E293B');
+        $hoja->getStyle("A{$fila}:G{$fila}")->getFill()->setFillType('solid')->getStartColor()->setRGB($colorFondo);
+        $fila++;
+
+        $hoja->setCellValue("A{$fila}", 'ID AMBIENTE');
+        $hoja->setCellValue("B{$fila}", 'CÓDIGO');
+        $hoja->setCellValue("C{$fila}", 'AMBIENTE');
+        $hoja->setCellValue("D{$fila}", 'C.I. CUSTODIO');
+        $hoja->setCellValue("E{$fila}", 'NOMBRE');
+        $hoja->setCellValue("F{$fila}", 'ROL');
+        $hoja->setCellValue("G{$fila}", 'ESTADO');
+        $hoja->getStyle("A{$fila}:G{$fila}")->getFont()->setBold(true);
+
+        $cantidadFilas = max($ambientes->count(), $custodios->count());
+
+        for ($i = 0; $i < $cantidadFilas; $i++) {
+            $fila++;
+            $ambiente = $ambientes->get($i);
+            $custodio = $custodios->get($i);
+
+            if ($ambiente) {
+                $hoja->setCellValue("A{$fila}", $ambiente->id_ambiente);
+                $hoja->setCellValue("B{$fila}", $ambiente->codigo);
+                $hoja->setCellValue("C{$fila}", $ambiente->nombre);
+            }
+
+            if ($custodio) {
+                $hoja->setCellValueExplicit("D{$fila}", (string) $custodio->ci, DataType::TYPE_STRING);
+                $hoja->setCellValue("E{$fila}", $custodio->nombre_completo);
+                $hoja->setCellValue("F{$fila}", $this->nombreRol($custodio->rol));
+                $hoja->setCellValue("G{$fila}", $custodio->estado);
+            }
+        }
+
+        return $fila + 2;
+    }
+
+    private function nombreRol(?string $rol): string
+    {
+        return match ($rol) {
+            User::ROL_CUSTODIO => 'Docente Custodio',
+            User::ROL_JEFE_CARRERA => 'Jefe de Carrera',
+            User::ROL_ADMINISTRADOR => 'Administrador',
+            User::ROL_RECTOR => 'Rector',
+            default => ucfirst(strtolower(str_replace('_', ' ', (string) $rol))),
+        };
     }
 
     public function store(Request $request)
